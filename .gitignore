@@ -1,0 +1,11 @@
+node_modules/
+out/
+release/
+dist/
+resources/runtime/*
+!resources/runtime/.gitkeep
+build/vc_redist.x64.exe
+*.log
+.DS_Store
+resources/runtime-mac/
+*.tsbuildinfo
