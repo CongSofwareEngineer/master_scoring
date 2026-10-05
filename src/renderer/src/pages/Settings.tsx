@@ -64,9 +64,7 @@ function General(): JSX.Element {
             <option value="en">English</option>
           </select>
         </Field>
-        <Field label="Mẫu MSSV (regex)" hint="Mặc định: ^\d{4,12}$ (vd 23546)">
-          <input className="input mono" value={draft.mssvPattern} onChange={(e) => setDraft({ ...draft, mssvPattern: e.target.value })} />
-        </Field>
+        {/* Mẫu MSSV không còn dùng - format chỉ cần hoten_mssv.zip */}
         <Field label="Giới hạn giải nén (MB)" hint="Chống zip bomb">
           <input className="input" type="number" min={50} value={draft.maxUnzipMb} onChange={(e) => setDraft({ ...draft, maxUnzipMb: Number(e.target.value) })} />
         </Field>

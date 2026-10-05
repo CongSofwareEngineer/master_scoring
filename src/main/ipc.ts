@@ -106,7 +106,6 @@ export function registerIpc(): void {
   handle('settings:get', () => getSettings(getCurrentUser()?.id ?? null))
   handle('settings:update', (patch) => {
     requireUser()
-    if (patch.mssvPattern !== undefined) new RegExp(patch.mssvPattern)
     if (patch.similarityThreshold !== undefined && !(patch.similarityThreshold >= 30 && patch.similarityThreshold <= 100))
       throw new Error('Ngưỡng trùng lặp phải trong khoảng 30–100%')
     if (patch.aiQuestionsMinPercent !== undefined && !(patch.aiQuestionsMinPercent >= 0 && patch.aiQuestionsMinPercent <= 100))
@@ -220,7 +219,7 @@ export function registerIpc(): void {
       properties: ['openFile']
     })
     if (r.canceled || !r.filePaths[0]) return null
-    const list = await parseClassList(r.filePaths[0], new RegExp(getSettings(null).mssvPattern))
+    const list = await parseClassList(r.filePaths[0])
     return saveAssignment(requireUser().id, { id, classList: list })
   })
 

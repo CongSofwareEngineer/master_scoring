@@ -58,7 +58,7 @@ export const CLOUD_PROVIDERS: Record<CloudProvider, { name: string; baseUrl: str
 
 export const DEFAULT_SETTINGS: AppSettings = {
   lang: 'vi',
-  mssvPattern: '^\\d{4,12}$',
+  mssvPattern: '^\\d{4,20}$',
   contextSize: 8192,
   llamaVariant: 'auto',
   gpuLayers: -1,

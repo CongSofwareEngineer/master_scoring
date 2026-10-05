@@ -27,7 +27,7 @@ function parseCsvLine(line: string, sep: string): string[] {
   return out.map((s) => s.trim())
 }
 
-function fromRows(rows: string[][], mssvPattern: RegExp): ClassListEntry[] {
+function fromRows(rows: string[][]): ClassListEntry[] {
   const norm = (s: string): string => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toLowerCase()
   let mssvCol = -1
   let nameCol = -1
@@ -47,11 +47,12 @@ function fromRows(rows: string[][], mssvPattern: RegExp): ClassListEntry[] {
     }
   }
   if (mssvCol < 0) {
-    // Không có tiêu đề: tìm cột khớp mẫu MSSV, cột chữ dài nhất bên cạnh là tên
+    // Không có tiêu đề: tìm cột có giá trị không trống ở đa số các hàng (giả định là MSSV)
     const sample = rows.slice(0, 20)
     const width = Math.max(...sample.map((r) => r.length))
     for (let c = 0; c < width; c++) {
-      if (sample.filter((r) => mssvPattern.test(r[c] ?? '')).length >= Math.max(1, sample.length / 2)) {
+      const nonEmptyCount = sample.filter((r) => (r[c] ?? '').trim().length > 0).length
+      if (nonEmptyCount >= Math.max(1, sample.length / 2)) {
         mssvCol = c
         break
       }
@@ -73,13 +74,13 @@ function fromRows(rows: string[][], mssvPattern: RegExp): ClassListEntry[] {
   return out
 }
 
-export async function parseClassList(file: string, mssvPattern: RegExp): Promise<ClassListEntry[]> {
+export async function parseClassList(file: string): Promise<ClassListEntry[]> {
   const ext = extname(file).toLowerCase()
   if (ext === '.csv' || ext === '.txt') {
     const text = decodeText(readFileSync(file))
     const lines = text.split(/\r?\n/).filter((l) => l.trim())
     const sep = (lines[0].match(/;/g)?.length ?? 0) > (lines[0].match(/,/g)?.length ?? 0) ? ';' : lines[0].includes('\t') ? '\t' : ','
-    return fromRows(lines.map((l) => parseCsvLine(l, sep)), mssvPattern)
+    return fromRows(lines.map((l) => parseCsvLine(l, sep)))
   }
   if (ext === '.xlsx') {
     const wb = new ExcelJS.Workbook()
@@ -95,7 +96,7 @@ export async function parseClassList(file: string, mssvPattern: RegExp): Promise
       })
       rows.push(vals)
     })
-    return fromRows(rows, mssvPattern)
+    return fromRows(rows)
   }
   throw new Error('Chỉ hỗ trợ file .xlsx, .csv')
 }

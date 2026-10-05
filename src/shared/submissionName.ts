@@ -1,5 +1,7 @@
 // Quy ước đặt tên file bài nộp: <Họ tên>_<MSSV>.zip (vd HoDienCong_23546.zip).
-// Dùng chung cho quét folder (main) và trang Hướng dẫn (renderer) để mô tả luôn khớp hành vi thật.
+// Chỉ cần có dấu "_" để tách họ tên và MSSV, không có ràng buộc về định dạng MSSV.
+
+import type { ParsedSubmissionName } from './types'
 
 export interface ParsedSubmissionName {
   name: string
@@ -43,25 +45,21 @@ export function prettifyStudentName(raw: string): string {
     .trim()
 }
 
-export function parseSubmissionName(fileName: string, pattern: RegExp): ParsedSubmissionName | null {
+export function parseSubmissionName(fileName: string): ParsedSubmissionName | null {
   const stem = stripExtension(fileName).normalize('NFC')
   const parts = splitAtLastUnderscore(stem)
   if (!parts) return null
   const name = prettifyStudentName(parts.left)
   const mssv = parts.right.trim()
-  if (!name || !pattern.test(mssv)) return null
+  if (!name || !mssv) return null
   return { name, mssv }
 }
 
-export type NameVerdict = 'valid' | 'unsupported_ext' | 'ignored_ext' | 'no_separator' | 'empty_name' | 'bad_mssv'
-
+export type NameVerdict = 'valid' | 'unsupported_ext' | 'ignored_ext' | 'no_separator' | 'empty_name'
 export interface NameCheckResult {
   verdict: NameVerdict
-  /** Họ tên sẽ hiển thị (null nếu không tách được). */
   name: string | null
-  /** MSSV sẽ hiển thị (null nếu không hợp lệ). */
   mssv: string | null
-  /** MSSV thô lấy từ sau dấu "_" cuối cùng (để hiển thị lý do bị từ chối). */
   rawMssv: string | null
 }
 
@@ -69,7 +67,7 @@ export interface NameCheckResult {
  * Mô phỏng đúng quyết định của scan.ts cho một tên file, dùng để kiểm tra trong trang Hướng dẫn.
  * Không mở file zip — chỉ xét tên file.
  */
-export function checkSubmissionName(fileName: string, pattern: RegExp): NameCheckResult {
+export function checkSubmissionName(fileName: string): NameCheckResult {
   const ext = fileExtension(fileName)
   if (UNSUPPORTED_EXTS.includes(ext)) return { verdict: 'unsupported_ext', name: null, mssv: null, rawMssv: null }
   if (!SUPPORTED_EXTS.includes(ext)) return { verdict: 'ignored_ext', name: null, mssv: null, rawMssv: null }
@@ -78,7 +76,6 @@ export function checkSubmissionName(fileName: string, pattern: RegExp): NameChec
   if (idx < 0) return { verdict: 'no_separator', name: null, mssv: null, rawMssv: null }
   const rawMssv = stem.slice(idx + 1).trim()
   const name = prettifyStudentName(stem.slice(0, idx))
-  if (idx === 0 || !name) return { verdict: 'empty_name', name: null, mssv: null, rawMssv }
-  if (!pattern.test(rawMssv)) return { verdict: 'bad_mssv', name, mssv: null, rawMssv }
+  if (idx === 0 || !name || !rawMssv) return { verdict: 'empty_name', name: null, mssv: null, rawMssv }
   return { verdict: 'valid', name, mssv: rawMssv, rawMssv }
 }
