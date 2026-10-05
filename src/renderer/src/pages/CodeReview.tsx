@@ -494,6 +494,7 @@ function ResultPanel(props: {
   onGenerate: () => Promise<void>
 }): JSX.Element {
   const t = useT()
+  const profiles = useStore((s) => s.profiles)
   const r = props.result
   if (!r) return <Empty title={t('Đang tải...')} />
   const sevIcon = (s: Issue['severity']): JSX.Element =>
@@ -665,7 +666,7 @@ function ResultPanel(props: {
             {r.auto.stats && (
               <div className="meta">
                 {r.auto.stats.files} file code · {r.auto.stats.lines} dòng · {r.auto.stats.commentLines} dòng comment
-                {r.detectedProfile && ` · nhận diện: ${r.detectedProfile}`}
+                {r.detectedProfile && ` · nhận diện: ${profiles.find((p) => p.id === r.detectedProfile)?.name ?? r.detectedProfile}`}
               </div>
             )}
             {r.auto.compile && (

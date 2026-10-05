@@ -1,20 +1,20 @@
 // Pipeline chấm 1 sinh viên:
-// 1. Giải nén (lọc theo profile)  2. Nhận diện công nghệ  3. Compile / test / phân tích tĩnh
+// 1. Giải nén (lọc theo profile)  2. Nhận diện công nghệ (profile "Tự động nhận diện")  3. Compile / test / phân tích tĩnh
 // 4. Chuẩn bị ngữ cảnh AI (project lớn → tóm tắt từng file)  5. AI chấm → JSON
 // 6. Ước lượng % code AI + điểm trừ theo chính sách (+ câu hỏi vấn đáp nếu bật)  7. Ghép điểm  8. Fingerprint cho Integrity  9. Lưu kết quả
 import { createHash } from 'crypto'
 import { evaluatePenalty } from '@shared/aiPolicy'
 import { rm } from 'fs/promises'
 import { join } from 'path'
-import { SOURCE_LABEL } from '@shared/constants'
-import type { AiEstimate, AiQuestions, AiSignal, Assignment, AutoResult, Criterion, CriterionResult, Issue, StudentRow, TechProfile } from '@shared/types'
+import { AUTO_PROFILE_ID, SOURCE_LABEL } from '@shared/constants'
+import type { AiEstimate, AiQuestions, AiSignal, Assignment, AutoResult, Criterion, CriterionResult, Issue, StudentRow } from '@shared/types'
 import { chat, cloudBackend, localBackend, type BackendConfig } from '../ai/client'
 import { compileAndTest } from '../analysis/cpp'
-import { detectProfile } from '../analysis/detect'
+import { loadForGrading } from '../analysis/detect'
 import { runProcess } from '../analysis/runner'
 import { runStatic, staticScore } from '../analysis/static'
 import { nowIso } from '../db'
-import { decodeText, loadSubmission, writeFilesTo, SubmissionError } from '../importer/extract'
+import { decodeText, writeFilesTo, SubmissionError } from '../importer/extract'
 import { estimateAiCode, levelFromEstimate, type LlmAiHint } from '../integrity/aiEstimate'
 import { fingerprintFiles } from '../integrity/fingerprint'
 import { generateQuestions } from '../integrity/questions'
@@ -115,10 +115,8 @@ export async function regenerateQuestions(studentId: number): Promise<AiQuestion
   const est = getResult(studentId).aiSignal?.estimate
   if (!est) throw new Error('Bài chưa có ước lượng % code AI — hãy chấm lại')
   const owner = assignmentOwner(a.id) ?? 0
-  const profiles = listProfiles(owner)
-  const profile = profiles.find((p) => p.id === a.profileId) ?? profiles[0]
   const settings = getSettings(null)
-  const sub = await loadSubmission(student.zipPath, profile, { maxBytes: settings.maxUnzipMb * 1048576, maxFiles: settings.maxFiles })
+  const { sub } = await loadForGrading(student.zipPath, listProfiles(owner), a.profileId, { maxBytes: settings.maxUnzipMb * 1048576, maxFiles: settings.maxFiles })
   const q = await buildQuestions(student, a, sub.files, est, backendFor(a))
   updateResult(studentId, { ai_questions: q })
   return q
@@ -254,7 +252,6 @@ export async function gradeStudent(
   const started = Date.now()
   const owner = assignmentOwner(a.id) ?? 0
   const profiles = listProfiles(owner)
-  const profile: TechProfile = profiles.find((p) => p.id === a.profileId) ?? profiles[0]
   const settings = getSettings(null)
   const prev = getResult(student.id)
   const overrides = prev.overrides ?? {}
@@ -267,15 +264,14 @@ export async function gradeStudent(
     onStatus('extracting')
     setStatus(student.id, 'extracting')
     onStep('Giải nén & lọc file')
-    const sub = await loadSubmission(student.zipPath, profile, { maxBytes: settings.maxUnzipMb * 1048576, maxFiles: settings.maxFiles })
+    // + 2. Nhận diện công nghệ (chỉ khi assignment chọn "Tự động nhận diện")
+    const { sub, profile, detected } = await loadForGrading(student.zipPath, profiles, a.profileId, {
+      maxBytes: settings.maxUnzipMb * 1048576,
+      maxFiles: settings.maxFiles
+    })
     warnings.push(...sub.warnings.slice(0, 30))
     if (!sub.files.size) throw new SubmissionError('Không tìm thấy mã nguồn')
-
-    // 2. Nhận diện công nghệ
-    const detected = detectProfile(sub.files, profiles)
-    if (detected && detected !== profile.id && !(['c', 'cpp'].includes(detected) && ['c', 'cpp'].includes(profile.id))) {
-      warnings.unshift(`Công nghệ nhận diện được (${profiles.find((p) => p.id === detected)?.name ?? detected}) khác với profile của assignment (${profile.name})`)
-    }
+    if (profile.id === AUTO_PROFILE_ID) warnings.unshift('Không nhận diện được công nghệ của bài nộp — chấm theo tiêu chí chung')
 
     // 3. Kiểm tra tự động
     if (signal.aborted) throw new Error('Đã huỷ')
@@ -386,7 +382,7 @@ export async function gradeStudent(
     // 6. Ước lượng % code do AI viết (phong cách từng đoạn + nhận định LLM, bỏ code khung) và điểm trừ
     onStep('Ước lượng % code do AI viết')
     const starter = await starterKgrams(a.id).catch(() => new Set<number>())
-    const estimate = estimateAiCode(sub.files, profile.id, { starter, llm: aiHint })
+    const estimate = estimateAiCode(sub.files, profile.id,{ starter, llm: aiHint })
     aiSignal = { level: levelFromEstimate(estimate), signals: aiSignal?.signals ?? [], estimate }
     const penalty = evaluatePenalty(a.aiPolicy, estimate, prev.aiPenalty)
 

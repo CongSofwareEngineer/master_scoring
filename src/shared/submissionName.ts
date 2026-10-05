@@ -1,8 +1,6 @@
 // Quy ước đặt tên file bài nộp: <Họ tên>_<MSSV>.zip (vd HoDienCong_23546.zip).
 // Chỉ cần có dấu "_" để tách họ tên và MSSV, không có ràng buộc về định dạng MSSV.
 
-import type { ParsedSubmissionName } from './types'
-
 export interface ParsedSubmissionName {
   name: string
   mssv: string
