@@ -18,6 +18,7 @@ import { ReportsPage } from './pages/Reports'
 import { TechProfilesPage } from './pages/TechProfiles'
 import { AiModelsPage } from './pages/AiModels'
 import { SettingsPage } from './pages/Settings'
+import { HelpPage } from './pages/Help'
 
 type Phase = 'loading' | 'auth' | 'setup' | 'main'
 
@@ -174,6 +175,7 @@ function Main(): JSX.Element {
           {page === 'profiles' && <TechProfilesPage />}
           {page === 'models' && <AiModelsPage />}
           {page === 'settings' && <SettingsPage />}
+          {page === 'help' && <HelpPage />}
         </main>
       </div>
     </div>

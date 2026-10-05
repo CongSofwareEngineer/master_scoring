@@ -13,6 +13,7 @@ export type Page =
   | 'profiles'
   | 'models'
   | 'settings'
+  | 'help'
 
 export interface PageParams {
   studentId?: number

@@ -1,26 +1,12 @@
 // Quét folder bài nộp: <TenSV>_<MSSV>.zip (vd HoDienCong_23546.zip) — tách theo dấu "_" cuối cùng.
+// Quy tắc đặt tên nằm ở @shared/submissionName để trang Hướng dẫn mô tả khớp hành vi thật.
 import { existsSync, readdirSync, statSync } from 'fs'
 import { basename, extname, join } from 'path'
+import { parseSubmissionName } from '@shared/submissionName'
 import type { Assignment, ClassListEntry, ScanSummary } from '@shared/types'
 import { all, run, transaction } from '../db'
 import { getSettings } from '../settings'
 import { quickCheckZip } from './extract'
-
-export function parseSubmissionName(fileName: string, pattern: RegExp): { name: string; mssv: string } | null {
-  const stem = basename(fileName, extname(fileName)).normalize('NFC')
-  const idx = stem.lastIndexOf('_')
-  if (idx <= 0) return null
-  // HoDienCong → Ho Dien Cong; vẫn nhận kiểu cũ có khoảng trắng / gạch dưới
-  const name = stem
-    .slice(0, idx)
-    .replace(/_/g, ' ')
-    .replace(/(\p{Ll})(\p{Lu})/gu, '$1 $2')
-    .replace(/\s+/g, ' ')
-    .trim()
-  const mssv = stem.slice(idx + 1).trim()
-  if (!name || !pattern.test(mssv)) return null
-  return { name, mssv }
-}
 
 interface FoundFile {
   path: string

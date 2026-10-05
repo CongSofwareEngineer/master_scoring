@@ -8,6 +8,7 @@ import {
   CodeXml,
   FileChartColumn,
   FolderKanban,
+  HelpCircle,
   KeyRound,
   Layers,
   LayoutDashboard,
@@ -78,6 +79,7 @@ export function Sidebar(): JSX.Element {
       {NAV.filter((n) => n.group === 1).map(item)}
       <div className="nav-sep" />
       {item({ page: 'settings', label: 'Cài đặt', icon: Settings })}
+      {item({ page: 'help', label: 'Hướng dẫn', icon: HelpCircle })}
       <div className="sidebar-footer">
         <button
           className={cls('nav-item', collapsed && 'tooltip-host')}
