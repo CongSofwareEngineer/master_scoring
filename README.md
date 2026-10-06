@@ -23,6 +23,7 @@ Kết quả nằm trong `release/<version>/`:
 | File | Dùng cho |
 | --- | --- |
 | `MasterScoring-Setup-<version>.exe` | Windows 10/11 x64 — bộ cài NSIS, cài vào thư mục user (không cần Admin), tạo shortcut Desktop + Start Menu, gỡ trong Settings → Apps |
+| `setup.bat` | Windows — tải kèm `Setup.exe`, chạy 1 lần trước khi cài: tự thêm chứng chỉ + gỡ chặn SmartScreen rồi mở bộ cài (không cần Admin; truyền tham số được, vd. `setup.bat /S` cài im lặng) |
 | `MasterScoring-<version>-arm64.dmg` | macOS Apple Silicon (M1/M2/M3/M4…) |
 | `MasterScoring-<version>-x64.dmg` | macOS chip Intel |
 
@@ -36,6 +37,12 @@ Các lệnh build tự làm:
 Build Windows chạy được trên cả macOS lẫn Windows. Build macOS cần chạy trên máy Mac.
 
 **Ký số (khuyến nghị khi phát hành):**
+- Windows: không đặt `CSC_LINK` → bộ cài ký bằng chứng chỉ tự ký (`build/cert`, `gen-cert.mjs` tạo tự động) và
+  **tự thêm chứng chỉ vào store của user trong lúc cài**. `release/` còn có `setup.bat` (nhúng cert + gỡ
+  Mark-of-the-Web rồi mở Setup) — **máy khác chỉ cần tải `MasterScoring-Setup-<version>.exe` + `setup.bat`, chạy
+  `setup.bat` là cài được, hết cảnh báo "Windows protected your PC → Run anyway"** (`.cer` / `trust-cert.bat` vẫn
+  chép kèm làm phương án thủ công). Nếu Windows Defender báo "virus/threat" thì phải Allow trong
+  Protection history hoặc gửi báo cáo false positive cho Microsoft.
 - Windows: đặt `CSC_LINK` (file .pfx) và `CSC_KEY_PASSWORD` để tránh SmartScreen cảnh báo.
 - macOS: cần chứng chỉ **Developer ID Application** + notarize (`APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`).
   Nếu không, máy Mac khác sẽ chặn lần mở đầu: chuột phải vào app → Open, hoặc chạy

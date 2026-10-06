@@ -10,3 +10,4 @@ build/vc_redist.x64.exe
 resources/runtime-mac/
 *.tsbuildinfo
 build/cert/
+build/embedded-signer.cer
