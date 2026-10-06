@@ -48,7 +48,7 @@ export default function App(): JSX.Element {
       }),
       on('ai:cloud-changed', () => void useStore.getState().refreshAi().catch(() => {})),
       on<QueueState>('queue:state', (q) => setQueue(q)),
-      on<string>('ai:runtime-progress', (m) => useStore.getState().toast(m, 'info'))
+      on<string>('ai:runtime-progress', (m) => useStore.getState().toast(m, 'success'))
     ]
     return () => offs.forEach((f) => f())
   }, [setAi, setQueue])
@@ -147,6 +147,25 @@ function DefaultPasswordBanner(): JSX.Element | null {
   )
 }
 
+const SIDEBAR_DEFAULT = 220
+const SIDEBAR_KEY = 'sidebarWidth'
+const clampSidebar = (w: number): number => Math.round(Math.min(420, Math.max(180, w)))
+function readSidebarWidth(): number {
+  try {
+    const v = Number(localStorage.getItem(SIDEBAR_KEY))
+    return v ? clampSidebar(v) : SIDEBAR_DEFAULT
+  } catch {
+    return SIDEBAR_DEFAULT
+  }
+}
+function saveSidebarWidth(w: number): void {
+  try {
+    localStorage.setItem(SIDEBAR_KEY, String(w))
+  } catch {
+    /* bỏ qua */
+  }
+}
+
 function Main(): JSX.Element {
   const page = useStore((s) => s.page)
   const collapsedSetting = useStore((s) => s.settings?.sidebarCollapsed ?? false)
@@ -158,11 +177,41 @@ function Main(): JSX.Element {
   }, [])
   // Màn hình nhỏ: sidebar tự thu gọn
   const collapsed = collapsedSetting || narrow
+  const [sidebarW, setSidebarW] = useState(readSidebarWidth)
+  const [resizing, setResizing] = useState(false)
+  // Kéo mép phải sidebar để đổi độ rộng (nhãn tiếng Việt dài); nhấp đúp để về mặc định
+  const startResize = (e: React.PointerEvent): void => {
+    e.preventDefault()
+    setResizing(true)
+    let w = sidebarW
+    const onMove = (ev: PointerEvent): void => {
+      w = clampSidebar(ev.clientX)
+      setSidebarW(w)
+    }
+    const onUp = (): void => {
+      setResizing(false)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      saveSidebarWidth(w)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
   return (
     <div className="app-shell">
       <TopBar />
-      <div className={cls('body-grid', collapsed && 'collapsed')}>
+      <div
+        className={cls('body-grid', collapsed && 'collapsed', resizing && 'resizing')}
+        style={{ '--sidebar-w': `${sidebarW}px` } as React.CSSProperties}
+      >
         <Sidebar />
+        {!collapsed && (
+          <div
+            className="sidebar-resizer"
+            onPointerDown={startResize}
+            onDoubleClick={() => (setSidebarW(SIDEBAR_DEFAULT), saveSidebarWidth(SIDEBAR_DEFAULT))}
+          />
+        )}
         <main className="content">
           {page !== 'review' && <DefaultPasswordBanner />}
           {page === 'dashboard' && <DashboardPage />}

@@ -64,6 +64,7 @@ export function Sidebar(): JSX.Element {
         key={n.page}
         className={cls('nav-item', page === n.page && 'active', collapsed && 'tooltip-host')}
         data-tip={collapsed ? t(n.label) : undefined}
+        title={collapsed ? undefined : t(n.label)}
         onClick={() => go(n.page)}
       >
         <Icon size={17} strokeWidth={1.8} />

@@ -259,6 +259,28 @@ h4 {
 .body-grid.collapsed {
   grid-template-columns: var(--sidebar-w-collapsed) 1fr;
 }
+.body-grid {
+  position: relative;
+}
+.body-grid.resizing {
+  transition: none;
+  cursor: col-resize;
+  user-select: none;
+}
+.sidebar-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--sidebar-w) - 3px);
+  width: 6px;
+  cursor: col-resize;
+  z-index: 5;
+}
+.sidebar-resizer:hover,
+.resizing .sidebar-resizer {
+  background: var(--primary);
+  opacity: 0.5;
+}
 
 .sidebar {
   background: var(--bg-2);

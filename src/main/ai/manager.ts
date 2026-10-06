@@ -1,5 +1,6 @@
 // Điều phối Local AI: Chưa cài → Đang tải → Đang kiểm tra file → Đang khởi động → Sẵn sàng / Lỗi.
 import type { AiStatus } from '@shared/types'
+import { emit } from '../events'
 import { getSettings, updateSettings } from '../settings'
 import { configuredProviders } from './client'
 import { getLocalState, runtimeAvailable, setLocalState, startLocal, stopLocal } from './llama'
@@ -52,6 +53,7 @@ export async function installAndUse(modelId: string): Promise<void> {
         })
         return
       }
+      emit('ai:runtime-progress', 'Đã tải xong model')
     } catch (e: any) {
       setLocalState({ kind: 'error', message: e?.message ?? String(e), modelId })
       return

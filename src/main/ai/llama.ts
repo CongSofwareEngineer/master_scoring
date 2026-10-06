@@ -94,7 +94,6 @@ export async function runtimeAvailable(): Promise<boolean> {
 export async function downloadRuntime(variant: Variant, onProgress: (msg: string) => void): Promise<string> {
   const isMac = process.platform === 'darwin'
   if (process.platform !== 'win32' && !isMac) throw new Error('Trên Linux hãy cài llama.cpp (llama-server) vào PATH')
-  onProgress('Đang tìm bản llama.cpp mới nhất...')
   const res = await netFetch(
     'https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=10',
     { headers: { 'User-Agent': 'MasterScoring', Accept: 'application/vnd.github+json' } },
@@ -119,17 +118,13 @@ export async function downloadRuntime(variant: Variant, onProgress: (msg: string
   const { createWriteStream } = await import('fs')
   const ws = createWriteStream(archive)
   const reader = dl.body.getReader()
-  let got = 0
   for (;;) {
     const { done, value } = await reader.read()
     if (done) break
     if (!ws.write(value)) await new Promise<void>((r) => ws.once('drain', () => r()))
-    got += value.length
-    onProgress(`Đang tải llama-server ${(got / 1048576).toFixed(1)} / ${(asset.size / 1048576).toFixed(1)} MB`)
   }
   await new Promise<void>((r) => ws.end(() => r()))
   await rm(dir, { recursive: true, force: true })
-  onProgress('Đang giải nén llama-server...')
   if (isMac) {
     await mkdir(dir, { recursive: true })
     await new Promise<void>((resolve, reject) =>
@@ -141,6 +136,7 @@ export async function downloadRuntime(variant: Variant, onProgress: (msg: string
   await rm(archive, { force: true })
   const exe = join(dir, exeName())
   if (!existsSync(exe)) throw new Error('Gói tải về không có llama-server')
+  onProgress('Đã tải xong llama-server')
   return exe
 }
 
