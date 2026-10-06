@@ -22,8 +22,18 @@ export interface ExtractLimits {
   maxFiles: number
 }
 
-const ALWAYS_IGNORE = ['node_modules/', '.git/', '.svn/', '__MACOSX/', '.DS_Store', 'Thumbs.db', '.next/', '.gradle/', '.idea/', '.vs/']
-const EXTRA_TEXT_NAMES = ['makefile', 'cmakelists.txt', 'readme', 'dockerfile', 'gradlew', '.gitignore', '.env', 'procfile']
+// Không đọc với mọi profile: thư viện/thư mục sinh tự động, log, lock file, tài liệu, file cấu hình công cụ, code đã minify.
+// Chỉ chấm code sinh viên tự viết.
+export const ALWAYS_IGNORE = [
+  'node_modules/', 'bower_components/', 'vendor/', '.venv/', 'venv/', '__pycache__/',
+  '.git/', '.svn/', '__MACOSX/', '.next/', '.nuxt/', '.gradle/', '.idea/', '.vs/', '.vscode/', 'dist/', 'coverage/', 'logs/',
+  '.DS_Store', 'Thumbs.db', 'desktop.ini',
+  '*.log', 'package-lock.json', 'npm-shrinkwrap.json', 'pnpm-lock.yaml', '*.lock', '*.lockb',
+  ...['readme', 'license', 'licence', 'changelog', 'contributing', 'authors'].flatMap((n) => [n, n + '.*']),
+  '.gitignore', '.gitattributes', '.editorconfig', '.npmrc', '.prettierrc*', '.eslintrc*', '.prettierignore', '.eslintignore',
+  '*.min.js', '*.min.css', '*.map'
+]
+const EXTRA_TEXT_NAMES = ['makefile', 'cmakelists.txt', 'dockerfile', 'gradlew', '.env', 'procfile']
 const MAX_TEXT_FILE = 512 * 1024
 const MAX_NESTED_ZIP = 200 * 1024 * 1024
 

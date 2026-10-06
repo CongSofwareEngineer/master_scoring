@@ -141,14 +141,14 @@ function NamingConventions(): JSX.Element {
         </div>
         <div className="col gap-4">
           <strong>Mặc định:</strong>
-          <code className="mono">^\d{4,12}$</code>
+          <code className="mono">{'^\\d{4,12}$'}</code>
           <span className="meta">(4 đến 12 chữ số)</span>
         </div>
         <div className="col gap-4">
           <strong>Ví dụ mẫu MSSV:</strong>
           <div className="row gap-8 mono">
             <div className="col gap-2">
-              <code>^\d{4,12}$</code>
+              <code>{'^\\d{4,12}$'}</code>
               <span className="meta">4-12 chữ số</span>
             </div>
             <div className="col gap-2">

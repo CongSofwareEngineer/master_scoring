@@ -1,7 +1,8 @@
 // Code Review: đọc file trực tiếp từ zip gốc (không lưu code sinh viên vào database).
 import type { FileNode } from '@shared/types'
-import { decodeText, loadSubmission } from './importer/extract'
-import { assignmentOwner, getAssignment, getProfile, getStudent } from './repo'
+import { loadForGrading } from './analysis/detect'
+import { decodeText } from './importer/extract'
+import { assignmentOwner, getAssignment, getStudent, listProfiles } from './repo'
 import { getSettings } from './settings'
 
 const cache = new Map<number, { mtime: number; files: Map<string, Buffer> }>()
@@ -17,9 +18,11 @@ async function load(studentId: number): Promise<Map<string, Buffer>> {
   }
   if (!s.zipPath) throw new Error('Sinh viên chưa có bài nộp')
   const a = getAssignment(s.assignmentId)
-  const profile = getProfile(assignmentOwner(a.id) ?? 0, a.profileId)
   const st = getSettings(null)
-  const sub = await loadSubmission(s.zipPath, profile, { maxBytes: st.maxUnzipMb * 1048576, maxFiles: st.maxFiles })
+  const { sub } = await loadForGrading(s.zipPath, listProfiles(assignmentOwner(a.id) ?? 0), a.profileId, {
+    maxBytes: st.maxUnzipMb * 1048576,
+    maxFiles: st.maxFiles
+  })
   cache.set(studentId, { mtime: s.zipMtime, files: sub.files })
   while (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value!)
   return sub.files

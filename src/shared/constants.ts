@@ -58,7 +58,7 @@ export const CLOUD_PROVIDERS: Record<CloudProvider, { name: string; baseUrl: str
 
 export const DEFAULT_SETTINGS: AppSettings = {
   lang: 'vi',
-  mssvPattern: '^\\d{4,12}$',
+  mssvPattern: '^\\d{4,20}$',
   contextSize: 8192,
   llamaVariant: 'auto',
   gpuLayers: -1,
@@ -119,7 +119,28 @@ const r = (id: string, name: string, max: number, source: Criterion['source'], d
   description
 })
 
+// Profile đặc biệt: mỗi bài nộp được nhận diện công nghệ riêng rồi chấm theo profile tương ứng.
+export const AUTO_PROFILE_ID = 'auto'
+
 export const BUILTIN_PROFILES: TechProfile[] = [
+  {
+    id: AUTO_PROFILE_ID,
+    name: 'Tự động nhận diện',
+    builtin: true,
+    detect: [],
+    ignore: [],
+    extensions: [],
+    checks: 'Nhận diện công nghệ của từng bài nộp, rồi lọc file / phân tích tĩnh / biên dịch theo profile nhận diện được',
+    buildEnabled: false,
+    buildNote: 'Biên dịch theo cấu hình của profile nhận diện được (C/C++ bật sẵn).',
+    rubric: [
+      r('structure_project', 'Cấu trúc project', 1, 'static', 'Có file mã nguồn chính, cấu trúc thư mục rõ ràng.'),
+      r('requirements', 'Đúng yêu cầu đề', 4, 'ai', 'Các chức năng đề yêu cầu đã được cài đặt đúng, xử lý trường hợp biên.'),
+      r('structure', 'Cấu trúc & tách hàm/lớp', 2, 'ai', 'Tách hàm/lớp/module hợp lý, không dồn mọi thứ vào một chỗ.'),
+      r('clean_code', 'Đặt tên & clean code', 2, 'ai', 'Tên biến/hàm có nghĩa, không lặp code, xử lý lỗi cơ bản.'),
+      r('docs', 'Comment', 1, 'ai', 'Comment giải thích phần quan trọng.')
+    ]
+  },
   {
     id: 'android',
     name: 'Java Android',
@@ -194,6 +215,140 @@ export const BUILTIN_PROFILES: TechProfile[] = [
       r('structure', 'Cấu trúc & tách hàm', 1.5, 'ai', 'Tách hàm nhập/xử lý/xuất, hàm main gọn.'),
       r('clean_code', 'Đặt tên & clean code', 1, 'ai', 'Tên biến/hàm có nghĩa, không lặp code.'),
       r('docs', 'Comment / README', 0.5, 'ai', 'Comment giải thích phần thuật toán chính.')
+    ]
+  },
+  {
+    id: 'python',
+    name: 'Python',
+    builtin: true,
+    detect: ['*.py', 'requirements.txt', 'setup.py', 'manage.py', 'Pipfile'],
+    ignore: ['__pycache__/', '*.pyc', '*.pyo', '*.pyd', '.venv/', 'venv/', 'env/', '.env/', 'node_modules/', 'build/', 'dist/', '*.egg-info/'],
+    extensions: ['.py', '.pyw', '.pyx', '.txt', '.md', '.json', '.yaml', '.yml', '.cfg', '.ini', '.toml'],
+    checks: 'Cấu trúc module, hàm main, xử lý input/output, phân tích tĩnh cơ bản',
+    buildEnabled: false,
+    buildNote: 'Python không yêu cầu build. App có thể chạy script trực tiếp nếu cài đặt Python.',
+    rubric: [
+      r('compile', 'Chạy được', 1, 'compile', 'Script chạy không lỗi cú pháp.'),
+      r('tests', 'Test case đúng', 4, 'test', 'Chia đều theo số test case đạt.'),
+      r('requirements', 'Đúng yêu cầu đề', 2, 'ai', 'Giải đúng bài toán theo đề, xử lý trường hợp biên.'),
+      r('structure', 'Cấu trúc & tách hàm', 1.5, 'ai', 'Tách hàm, module hợp lý, hàm main gọn.'),
+      r('clean_code', 'Đặt tên & clean code', 1, 'ai', 'Tên biến/hàm có nghĩa, không lặp code, PEP 8.'),
+      r('docs', 'Comment / README', 0.5, 'ai', 'Comment giải thích thuật toán, docstring.')
+    ]
+  },
+  {
+    id: 'javascript',
+    name: 'JavaScript',
+    builtin: true,
+    detect: ['*.js', '*.mjs', '*.cjs'],
+    ignore: ['node_modules/', 'build/', 'dist/', '.next/', '.turbo/', 'coverage/', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'],
+    extensions: ['.js', '.mjs', '.cjs', '.jsx', '.json', '.md', '.txt', '.html', '.css', '.scss', '.env'],
+    checks: 'Cú pháp JS, module, function, lớp, xử lý lỗi, phân tích tĩnh',
+    buildEnabled: false,
+    buildNote: 'JavaScript (Node.js) chạy trực tiếp. App không chạy npm install tự động.',
+    rubric: [
+      r('structure_project', 'Cấu trúc project', 1, 'static', 'Có tệp chính, module rõ ràng, không lộ key trong .env.'),
+      r('requirements', 'Đúng yêu cầu đề', 4, 'ai', 'Các chức năng đề yêu cầu đã được cài đặt đúng.'),
+      r('functions', 'Hàm & logic', 1.5, 'ai', 'Tách hàm hợp lý, xử lý lỗi, không lặp code.'),
+      r('data', 'Xử lý dữ liệu', 1.5, 'ai', 'Thao tác dữ liệu, vòng lặp, điều kiện.'),
+      r('clean_code', 'Đặt tên & clean code', 1, 'ai', 'Tên có nghĩa, camelCase/snake_case nhất quán.'),
+      r('docs', 'Comment / README', 0.5, 'ai', 'Comment phần quan trọng, README hướng dẫn.')
+    ]
+  },
+  {
+    id: 'reactjs',
+    name: 'React (Web)',
+    builtin: true,
+    detect: ['package.json:react', '*.jsx', '*.tsx'],
+    ignore: ['node_modules/', 'build/', 'dist/', '.next/', '.vercel/', 'coverage/', 'package-lock.json', 'yarn.lock'],
+    extensions: ['.jsx', '.tsx', '.js', '.ts', '.css', '.scss', '.json', '.md', '.html', '.env'],
+    checks: 'Component, JSX, state, props, hooks, cấu trúc project React',
+    buildEnabled: false,
+    buildNote: 'React không cần build. Chạy trực tiếp với Node.js/Babel hoặc bundler của giáo viên.',
+    rubric: [
+      r('structure_project', 'Cấu trúc project React', 1, 'static', 'Có src/, components/, App.jsx/tsx, index.html.'),
+      r('requirements', 'Đúng yêu cầu đề', 4, 'ai', 'Các màn hình/chức năng đề yêu cầu đã được cài đặt đúng.'),
+      r('components', 'Component & tái sử dụng', 2, 'ai', 'Tách component hợp lý, props rõ ràng, tái sử dụng cao.'),
+      r('state', 'State management', 1.5, 'ai', 'useState/useEffect/useContext, quản lý state hợp lý.'),
+      r('clean_code', 'Đặt tên & clean code', 1, 'ai', 'Tên có nghĩa, JSX sạch, không lặp logic.'),
+      r('docs', 'Comment / README', 0.5, 'ai', 'Comment props/state, README hướng dẫn chạy.')
+    ]
+  },
+  {
+    id: 'react-native',
+    name: 'React Native',
+    builtin: true,
+    detect: ['package.json:react-native', 'package.json:expo'],
+    ignore: ['node_modules/', 'android/', 'ios/', 'build/', '.gradle/', '.idea/', '*.apk', '*.aab'],
+    extensions: ['.js', '.jsx', '.ts', '.tsx', '.json', '.md', '.css', '.env'],
+    checks: 'Component, style, navigation, platform-specific code, React Native API',
+    buildEnabled: false,
+    buildNote: 'React Native không build trực tiếp. Cần Android Studio/Xcode để build trên thiết bị.',
+    rubric: [
+      r('structure_project', 'Cấu trúc project React Native', 1, 'static', 'Có App.js/tsx, components/, screens/, navigation.'),
+      r('requirements', 'Đúng yêu cầu đề', 4, 'ai', 'Các màn hình/chức năng mobile đề yêu cầu đã cài đặt.'),
+      r('components', 'UI Components', 1.5, 'ai', 'View, Text, Image, StyleSheet, component tái sử dụng.'),
+      r('navigation', 'Điều hướng', 1.5, 'ai', 'Stack/Tab/Drawer navigation, chuyển màn hình.'),
+      r('data', 'Xử lý dữ liệu & API', 1, 'ai', 'Fetch API, async/await, xử lý response/lỗi.'),
+      r('clean_code', 'Đặt tên & clean code', 1, 'ai', 'Tên có nghĩa, JSX sạch, style tách riêng.'),
+      r('docs', 'Comment / README', 0.5, 'ai', 'Comment phần quan trọng, README hướng dẫn chạy.')
+    ]
+  },
+  {
+    id: 'php',
+    name: 'PHP',
+    builtin: true,
+    detect: ['*.php', 'index.php', 'composer.json'],
+    ignore: ['vendor/', 'node_modules/', '.git/', '.env', 'storage/', 'bootstrap/cache/', '*.lock'],
+    extensions: ['.php', '.phtml', '.php3', '.php4', '.php5', '.phps', '.html', '.css', '.js', '.json', '.sql', '.md', '.txt'],
+    checks: 'Cú pháp PHP, OOP, database, MVC, form handling, security',
+    buildEnabled: false,
+    buildNote: 'PHP chạy trên server. App không chạy web server tự động.',
+    rubric: [
+      r('structure_project', 'Cấu trúc project PHP', 1, 'static', 'MVC tách biệt, config ngoài code, không lộ thông tin nhạy cảm.'),
+      r('requirements', 'Đúng yêu cầu đề', 4, 'ai', 'Các trang/chức năng web đề yêu cầu đã cài đặt.'),
+      r('database', 'Database & queries', 1.5, 'ai', 'Kết nối DB, query hiệu quả, ngắt kết nối.'),
+      r('security', 'Bảo mật cơ bản', 1, 'static', 'Input validation, SQL injection, XSS protection.'),
+      r('clean_code', 'Đặt tên & clean code', 1, 'ai', 'Tên biến/hàm có nghĩa, không lặp code.'),
+      r('docs', 'Comment / README', 0.5, 'ai', 'Comment phần quan trọng, README cài đặt.')
+    ]
+  },
+  {
+    id: 'csharp',
+    name: 'C#',
+    builtin: true,
+    detect: ['*.cs', '*.sln', '*.csproj'],
+    ignore: ['bin/', 'obj/', 'Debug/', 'Release/', 'packages/', '.vs/', '*.dll', '*.exe', '*.pdb'],
+    extensions: ['.cs', '.txt', '.md', '.json', '.xml', '.config'],
+    checks: 'Cú pháp C#, lớp, interface, namespace, LINQ, async/await',
+    buildEnabled: false,
+    buildNote: 'C# yêu cầu .NET SDK. App không tự động build project C#.',
+    rubric: [
+      r('compile', 'Biên dịch được', 1, 'compile', 'Code biên dịch không lỗi cú pháp.'),
+      r('tests', 'Test case đúng', 4, 'test', 'Chia đều theo số test case đạt.'),
+      r('requirements', 'Đúng yêu cầu đề', 2, 'ai', 'Giải đúng bài toán, xử lý logic nghiệp vụ.'),
+      r('oop', 'OOP & thiết kế', 1.5, 'ai', 'Lớp, interface, kế thừa, đóng gói đúng mục đích.'),
+      r('clean_code', 'Đặt tên & clean code', 1, 'ai', 'Tên theo PascalCase, không lặp code.'),
+      r('docs', 'Comment / README', 0.5, 'ai', 'XML comment cho method, README mô tả.')
+    ]
+  },
+  {
+    id: 'css',
+    name: 'CSS/HTML',
+    builtin: true,
+    detect: ['*.css', '*.scss', '*.sass', '*.html', '*.htm'],
+    ignore: ['node_modules/', 'dist/', 'build/', 'bower_components/'],
+    extensions: ['.css', '.scss', '.sass', '.less', '.styl', '.html', '.htm', '.xhtml', '.json', '.md', '.txt'],
+    checks: 'CSS selector, responsive, layout, HTML semantic, accessibility',
+    buildEnabled: false,
+    buildNote: 'CSS/HTML là ngôn ngữ markup/styling. Không yêu cầu build.',
+    rubric: [
+      r('structure', 'Cấu trúc HTML', 1.5, 'static', 'Semantic HTML, thẻ đúng mục đích, cấu trúc rõ ràng.'),
+      r('requirements', 'Đúng yêu cầu đề', 3, 'ai', 'Layout, màu sắc, hiệu ứng theo yêu cầu.'),
+      r('css_quality', 'Chất lượng CSS', 2, 'ai', 'Selector cụ thể, responsive, không lặp style.'),
+      r('responsive', 'Responsive design', 1.5, 'ai', 'Hiển thị tốt trên nhiều kích thước màn hình.'),
+      r('accessibility', 'Accessibility', 1, 'static', 'Alt text, ARIA, keyboard navigation.'),
+      r('docs', 'Comment / README', 0.5, 'ai', 'Comment phần CSS phức tạp.')
     ]
   }
 ]

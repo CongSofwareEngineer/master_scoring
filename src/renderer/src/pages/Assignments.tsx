@@ -18,7 +18,7 @@ import {
   X
 } from 'lucide-react'
 import { evaluatePenalty } from '@shared/aiPolicy'
-import { CLOUD_PROVIDERS, DEFAULT_AI_POLICY } from '@shared/constants'
+import { AUTO_PROFILE_ID, CLOUD_PROVIDERS, DEFAULT_AI_POLICY } from '@shared/constants'
 import type { AiConfidence, AiEstimate, AiPenaltyMode, AiPolicy, Assignment, CloudProvider, Criterion, ScanSummary, StudentRow, TestCase } from '@shared/types'
 import { call, on } from '../lib/api'
 import { cls, uid } from '../lib/format'
@@ -135,7 +135,14 @@ function CreateAssignment({ onCreated, onCancel }: { onCreated: (a: Assignment) 
         <Field label="Lớp">
           <input className="input" value={className} onChange={(e) => setClassName(e.target.value)} placeholder="VD: ST4 Ca 2" />
         </Field>
-        <Field label="Loại công nghệ (Tech Profile)" hint="Rubric mẫu của profile được điền sẵn, chỉnh sửa được.">
+        <Field
+          label="Loại công nghệ (Tech Profile)"
+          hint={
+            profileId === AUTO_PROFILE_ID
+              ? 'Mỗi bài nộp được nhận diện công nghệ riêng. Rubric chung được điền sẵn, chỉnh sửa được.'
+              : 'Rubric mẫu của profile được điền sẵn, chỉnh sửa được. Không nhận diện công nghệ khi chấm.'
+          }
+        >
           <select className="select" value={profileId} onChange={(e) => setProfileId(e.target.value)}>
             {profiles.map((p) => (
               <option key={p.id} value={p.id}>

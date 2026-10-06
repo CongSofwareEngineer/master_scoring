@@ -1,11 +1,10 @@
-// Quét folder bài nộp: <TenSV>_<MSSV>.zip (vd HoDienCong_23546.zip) — tách theo dấu "_" cuối cùng.
-// Quy tắc đặt tên nằm ở @shared/submissionName để trang Hướng dẫn mô tả khớp hành vi thật.
+// Quét folder bài nộp: <TenSV>_<MSSV>.zip — tách theo dấu "_" cuối cùng.
+// Chỉ cần có dấu "_" là đủ, không có ràng buộc về định dạng MSSV.
 import { existsSync, readdirSync, statSync } from 'fs'
 import { basename, extname, join } from 'path'
 import { parseSubmissionName } from '@shared/submissionName'
 import type { Assignment, ClassListEntry, ScanSummary } from '@shared/types'
 import { all, run, transaction } from '../db'
-import { getSettings } from '../settings'
 import { quickCheckZip } from './extract'
 
 interface FoundFile {
@@ -28,13 +27,6 @@ interface ExistingRow {
 
 export async function scanFolder(a: Assignment, onProgress?: (done: number, total: number) => void): Promise<ScanSummary> {
   if (!a.submissionsDir || !existsSync(a.submissionsDir)) throw new Error('Folder bài nộp không tồn tại')
-  const settings = getSettings(null)
-  let pattern: RegExp
-  try {
-    pattern = new RegExp(settings.mssvPattern)
-  } catch {
-    throw new Error('Mẫu MSSV trong Settings không hợp lệ')
-  }
 
   const entries = readdirSync(a.submissionsDir, { withFileTypes: true }).filter((d) => d.isFile())
   const found: FoundFile[] = []
@@ -47,10 +39,10 @@ export async function scanFolder(a: Assignment, onProgress?: (done: number, tota
     if (ext !== '.zip' && ext !== '.rar' && ext !== '.7z') continue
     const mtime = Math.floor(statSync(p).mtimeMs)
     if (ext !== '.zip') {
-      found.push({ path: p, mtime, kind: 'unsupported', parsed: parseSubmissionName(d.name, pattern), broken: null })
+      found.push({ path: p, mtime, kind: 'unsupported', parsed: parseSubmissionName(d.name), broken: null })
       continue
     }
-    found.push({ path: p, mtime, kind: 'zip', parsed: parseSubmissionName(d.name, pattern), broken: await quickCheckZip(p) })
+    found.push({ path: p, mtime, kind: 'zip', parsed: parseSubmissionName(d.name), broken: await quickCheckZip(p) })
   }
 
   const existing = all<ExistingRow>('SELECT id, mssv, name, zip_path, zip_mtime, scan_status, scan_note FROM students WHERE assignment_id = ?', [a.id])
@@ -98,8 +90,8 @@ export async function scanFolder(a: Assignment, onProgress?: (done: number, tota
       const idx = stem.lastIndexOf('_')
       const note =
         idx > 0 && stem.slice(idx + 1).trim()
-          ? `MSSV "${stem.slice(idx + 1).trim()}" không khớp "Mẫu MSSV" trong Settings (${settings.mssvPattern}) — sửa mẫu rồi quét lại, hoặc gán MSSV tay`
-          : 'Sai định dạng tên file (cần <TenSV>_<MSSV>.zip, vd HoDienCong_23546.zip) — cần gán MSSV'
+          ? `Sai định dạng tên file (cần <HọTên>_<MSSV>.zip, vd HoDienCong_23546.zip) — thiếu họ tên hoặc MSSV bị trống`
+          : 'Sai định dạng tên file (cần <HọTên>_<MSSV>.zip) — cần gán MSSV tay'
       planned.push({ path: f.path, mtime: f.mtime, mssv: '', name: basename(f.path), status: 'needs_assign', note, alt: [] })
       continue
     }

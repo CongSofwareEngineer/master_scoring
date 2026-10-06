@@ -1,8 +1,9 @@
 // Code khung (starter code) giáo viên phát: dùng để loại trừ khi so trùng lặp và khi ước lượng % code AI.
 import { existsSync, readdirSync, readFileSync, statSync } from 'fs'
 import { join, relative } from 'path'
-import { loadSubmission, matchesIgnore } from '../importer/extract'
-import { assignmentOwner, getAssignment, getProfile } from '../repo'
+import { loadForGrading } from '../analysis/detect'
+import { ALWAYS_IGNORE, matchesIgnore } from '../importer/extract'
+import { assignmentOwner, getAssignment, listProfiles } from '../repo'
 import { getSettings } from '../settings'
 import { kgramSet } from './fingerprint'
 
@@ -26,13 +27,13 @@ function readFolder(dir: string, ignore: string[]): Map<string, Buffer> {
 export async function loadStarterFiles(assignmentId: number): Promise<Map<string, Buffer> | null> {
   const a = getAssignment(assignmentId)
   if (!a.starterDir || !existsSync(a.starterDir)) return null
-  const owner = assignmentOwner(assignmentId) ?? 0
-  const profile = getProfile(owner, a.profileId)
+  const profiles = listProfiles(assignmentOwner(assignmentId) ?? 0)
   const s = getSettings(null)
   if (statSync(a.starterDir).isFile()) {
-    return (await loadSubmission(a.starterDir, profile, { maxBytes: s.maxUnzipMb * 1048576, maxFiles: s.maxFiles })).files
+    return (await loadForGrading(a.starterDir, profiles, a.profileId, { maxBytes: s.maxUnzipMb * 1048576, maxFiles: s.maxFiles })).sub.files
   }
-  return readFolder(a.starterDir, [...profile.ignore, 'node_modules/', '.git/'])
+  const profile = profiles.find((p) => p.id === a.profileId)
+  return readFolder(a.starterDir, [...(profile?.ignore ?? []), ...ALWAYS_IGNORE])
 }
 
 // Tập k-gram của code khung, cache theo assignment (đổi folder / sửa file thì tính lại).
