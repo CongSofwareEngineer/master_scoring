@@ -43,7 +43,7 @@ Build Windows chạy được trên cả macOS lẫn Windows. Build macOS cần 
 
 ## Tài khoản
 
-- Lần mở đầu tiên app tự tạo tài khoản mặc định **`admin` / `admin`**.
+- Lần mở đầu tiên app tự tạo tài khoản mặc định **`username` / `pass`**.
 - Sau khi đăng nhập: **Cài đặt → Tài khoản** để đổi tên đăng nhập, tên hiển thị và mật khẩu
   (app hiện thanh nhắc cho tới khi đổi mật khẩu mặc định). Có thể tạo thêm tài khoản cho giáo viên khác ở màn hình đăng nhập.
 

@@ -9,3 +9,4 @@ build/vc_redist.x64.exe
 .DS_Store
 resources/runtime-mac/
 *.tsbuildinfo
+build/cert/

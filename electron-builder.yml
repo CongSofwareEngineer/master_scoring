@@ -32,7 +32,12 @@ win:
       to: runtime
       filter:
         - '**/*'
-  # Ký số: đặt biến môi trường CSC_LINK / CSC_KEY_PASSWORD khi build
+  # Ký số: tự động bằng chứng chỉ tự ký build/cert (scripts/gen-cert.mjs + scripts/builder.mjs).
+  # Có chứng chỉ thật thì đặt WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD — sẽ được ưu tiên.
+  signtoolOptions:
+    signingHashAlgorithms:
+      - sha256
+    rfc3161TimeStampServer: http://timestamp.digicert.com
 nsis:
   oneClick: false
   perMachine: false

@@ -249,6 +249,9 @@ export function TopBar(): JSX.Element {
       <div className="brand">
         <Logo />
         Master Scoring
+        <span className="meta" style={{ fontWeight: 400, marginLeft: 6 }}>
+          v{__APP_VERSION__}
+        </span>
       </div>
       <div className="no-drag" style={{ marginLeft: 12 }}>
         <AssignmentPicker />
