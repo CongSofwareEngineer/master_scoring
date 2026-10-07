@@ -1,7 +1,7 @@
 {
   "name": "master-scoring",
   "productName": "Master Scoring",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Master Scoring - ứng dụng chấm điểm code sinh viên (Local AI / Cloud AI)",
   "author": "Master Scoring",
   "license": "UNLICENSED",
