@@ -1,6 +1,6 @@
 // Code Review: đọc file trực tiếp từ zip gốc (không lưu code sinh viên vào database).
 import type { FileNode } from '@shared/types'
-import { loadForGrading } from './analysis/detect'
+import { gradingProfileId, loadForGrading } from './analysis/detect'
 import { decodeText } from './importer/extract'
 import { assignmentOwner, getAssignment, getStudent, listProfiles } from './repo'
 import { getSettings } from './settings'
@@ -19,7 +19,7 @@ async function load(studentId: number): Promise<Map<string, Buffer>> {
   if (!s.zipPath) throw new Error('Sinh viên chưa có bài nộp')
   const a = getAssignment(s.assignmentId)
   const st = getSettings(null)
-  const { sub } = await loadForGrading(s.zipPath, listProfiles(assignmentOwner(a.id) ?? 0), a.profileId, {
+  const { sub } = await loadForGrading(s.zipPath, listProfiles(assignmentOwner(a.id) ?? 0), gradingProfileId(a), {
     maxBytes: st.maxUnzipMb * 1048576,
     maxFiles: st.maxFiles
   })

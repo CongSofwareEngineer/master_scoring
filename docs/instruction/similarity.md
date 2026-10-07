@@ -12,6 +12,7 @@
   mặc định 70%).
 - **Fingerprint (lúc chấm):** chuẩn hoá code (bỏ comment / khoảng trắng, thay tên định danh không phải từ khoá) → token
   → k-gram (K = 10) hash FNV-1a → winnowing (W = 5). Lưu `{files, h, f, l}` vào `results.fingerprint` (không lưu code).
+  File báo cáo `.docx` (văn bản đã chuyển): token = từ (`tokenizeWords`, bỏ dấu, chữ thường), k-gram `K_TEXT` = 8 từ.
 - **So sánh:** chạy **sau khi chấm xong cả lớp** (tự động nếu bật) hoặc bấm tay; so từng cặp tuần tự, nhường event loop
   mỗi vòng. Hash thuộc code khung bị loại. Mỗi bài cần ≥ 8 hash. Độ giống = trung bình (chung/A, chung/B) × 100. Lưu
   cặp ≥ 30% vào `integrity_pairs` kèm ≤ 400 vị trí trùng (file, dòng) để xem song song.

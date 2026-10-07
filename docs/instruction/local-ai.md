@@ -20,7 +20,8 @@
     `resources/runtime-mac/<arch>` → `PATH` (macOS/Linux). Không có → tự tải từ GitHub `ggml-org/llama.cpp`.
   - Biến thể: Windows `cpu` / `vulkan` (auto chọn Vulkan nếu có GPU rời NVIDIA/AMD; lỗi Vulkan → tự chuyển CPU);
     macOS một bản Metal, Apple Silicon đưa toàn bộ layer lên GPU.
-  - Chạy `-m <model> --host 127.0.0.1 --port <cổng trống> -c contextSize -np 1 -t threads -ngl gpuLayers`; chờ
+  - Chạy `-m <model> --host 127.0.0.1 --port <cổng trống> -c <context> -np 1 -t threads -ngl gpuLayers`; context =
+    `effectiveContext('local', contextSize)` = min(contextSize, `LOCAL_MAX_CONTEXT` 32K — context huấn luyện của Qwen2.5-Coder); chờ
     `/health` tối đa 5 phút.
   - Lỗi khởi động được giải thích (thiếu VC++ Runtime, CPU không hỗ trợ, thiếu RAM/VRAM, model hỏng).
 - **Vòng đời:** ghi PID vào `runtime/llama.pid`; watchdog (PowerShell / sh) kill server khi app chết; lần mở sau

@@ -1,16 +1,17 @@
-// Quét folder bài nộp: <TenSV>_<MSSV>.zip — tách theo dấu "_" cuối cùng.
+// Quét folder bài nộp: <TenSV>_<MSSV>.<đuôi nén> (.zip .rar .7z .tar.gz .iso .dmg...) — tách theo dấu "_" cuối cùng.
+// Assignment báo cáo nhận thêm file Word / Excel / PowerPoint nộp thẳng: <TenSV>_<MSSV>.docx (.doc .xlsx .pptx…).
 // Chỉ cần có dấu "_" là đủ, không có ràng buộc về định dạng MSSV.
 import { existsSync, readdirSync, statSync } from 'fs'
-import { basename, extname, join } from 'path'
-import { parseSubmissionName } from '@shared/submissionName'
+import { basename, join } from 'path'
+import { isSubmissionFile, parseSubmissionName, stripExtension } from '@shared/submissionName'
 import type { Assignment, ClassListEntry, ScanSummary } from '@shared/types'
 import { all, run, transaction } from '../db'
-import { quickCheckZip } from './extract'
+import { NoSevenZipError, quickCheckArchive } from './extract'
 
 interface FoundFile {
   path: string
   mtime: number
-  kind: 'zip' | 'unsupported'
+  kind: 'archive' | 'unsupported'
   parsed: { name: string; mssv: string } | null
   broken: string | null
 }
@@ -35,14 +36,15 @@ export async function scanFolder(a: Assignment, onProgress?: (done: number, tota
     i++
     onProgress?.(i, entries.length)
     const p = join(a.submissionsDir, d.name)
-    const ext = extname(d.name).toLowerCase()
-    if (ext !== '.zip' && ext !== '.rar' && ext !== '.7z') continue
+    if (!isSubmissionFile(d.name, a.kind)) continue
     const mtime = Math.floor(statSync(p).mtimeMs)
-    if (ext !== '.zip') {
+    try {
+      found.push({ path: p, mtime, kind: 'archive', parsed: parseSubmissionName(d.name), broken: await quickCheckArchive(p) })
+    } catch (e) {
+      // Máy không có 7-Zip → chỉ đọc được .zip
+      if (!(e instanceof NoSevenZipError)) throw e
       found.push({ path: p, mtime, kind: 'unsupported', parsed: parseSubmissionName(d.name), broken: null })
-      continue
     }
-    found.push({ path: p, mtime, kind: 'zip', parsed: parseSubmissionName(d.name), broken: await quickCheckZip(p) })
   }
 
   const existing = all<ExistingRow>('SELECT id, mssv, name, zip_path, zip_mtime, scan_status, scan_note FROM students WHERE assignment_id = ?', [a.id])
@@ -76,7 +78,7 @@ export async function scanFolder(a: Assignment, onProgress?: (done: number, tota
         mssv: parsed?.mssv ?? '',
         name: parsed?.name ?? basename(f.path),
         status: 'unsupported',
-        note: 'Định dạng .rar/.7z không được hỗ trợ — yêu cầu sinh viên nộp lại .zip',
+        note: 'Không tìm thấy 7-Zip để đọc định dạng này — cài lại app (bản có kèm 7-Zip) hoặc yêu cầu sinh viên nộp lại .zip',
         alt: []
       })
       continue
@@ -86,12 +88,13 @@ export async function scanFolder(a: Assignment, onProgress?: (done: number, tota
       continue
     }
     if (!parsed) {
-      const stem = basename(f.path, extname(f.path)).normalize('NFC')
+      const stem = stripExtension(f.path).normalize('NFC')
       const idx = stem.lastIndexOf('_')
+      const ext = a.kind === 'report' ? '.docx' : '.zip'
       const note =
         idx > 0 && stem.slice(idx + 1).trim()
-          ? `Sai định dạng tên file (cần <HọTên>_<MSSV>.zip, vd HoDienCong_23546.zip) — thiếu họ tên hoặc MSSV bị trống`
-          : 'Sai định dạng tên file (cần <HọTên>_<MSSV>.zip) — cần gán MSSV tay'
+          ? `Sai định dạng tên file (cần <HọTên>_<MSSV>${ext}, vd HoDienCong_23546${ext}) — thiếu họ tên hoặc MSSV bị trống`
+          : `Sai định dạng tên file (cần <HọTên>_<MSSV>${ext}) — cần gán MSSV tay`
       planned.push({ path: f.path, mtime: f.mtime, mssv: '', name: basename(f.path), status: 'needs_assign', note, alt: [] })
       continue
     }

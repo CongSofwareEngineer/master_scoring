@@ -1,8 +1,10 @@
 // Tải các thành phần runtime được đóng gói sẵn trong bộ cài:
 //   node scripts/fetch-runtime.mjs win   → llama-server.exe (CPU + GPU Vulkan) → resources/runtime/llama/{cpu,vulkan}
+//                                           + 7-Zip (7z.exe + 7z.dll)            → resources/runtime/7zip
 //                                           + Visual C++ Redistributable x64     → build/vc_redist.x64.exe
 //   node scripts/fetch-runtime.mjs mac   → llama-server (Metal) cho Apple Silicon + Intel
 //                                           → resources/runtime-mac/{arm64,x64}/llama/cpu
+//                                           + 7-Zip (7zz)                        → resources/runtime-mac/{arm64,x64}/7zip
 // Chạy lại an toàn: phần nào đã có sẽ bỏ qua. Lỗi mạng chỉ cảnh báo, không chặn build
 // (khi đó app sẽ tự tải llama-server lúc cài Local AI lần đầu).
 import { execFileSync } from 'node:child_process'
@@ -127,6 +129,77 @@ async function fetchLlamaMac() {
   }
 }
 
+// 7-Zip: đọc bài nộp .rar .7z .tar.gz .iso .dmg .arj... (bản chính thức từ 7-zip.org, giấy phép LGPL + unRAR).
+const SEVEN_ZIP_VER = '2501' // 7-Zip 25.01
+const sevenZipUrl = (name) => `https://www.7-zip.org/a/${name}`
+
+// 7-Zip chạy được trên máy build — dùng để bóc bộ cài 7-Zip Windows (là file 7z SFX).
+async function hostSevenZip(tmp) {
+  if (process.platform === 'win32') {
+    const exe = join(tmp, '7zr.exe')
+    await download(sevenZipUrl('7zr.exe'), exe)
+    return exe
+  }
+  const name = process.platform === 'darwin' ? `7z${SEVEN_ZIP_VER}-mac.tar.xz` : `7z${SEVEN_ZIP_VER}-linux-${process.arch === 'arm64' ? 'arm64' : 'x64'}.tar.xz`
+  const txz = join(tmp, name)
+  await download(sevenZipUrl(name), txz)
+  execFileSync('tar', ['-xJf', txz, '-C', tmp, '7zz'])
+  chmodSync(join(tmp, '7zz'), 0o755)
+  return join(tmp, '7zz')
+}
+
+async function fetchSevenZipWin() {
+  const dest = join(root, 'resources', 'runtime', '7zip')
+  if (existsSync(join(dest, '7z.exe')) && existsSync(join(dest, '7z.dll'))) {
+    console.log('[runtime] 7-Zip (Windows) đã có, bỏ qua')
+    return
+  }
+  const tmp = join(root, 'resources', 'runtime', '_tmp-7zip')
+  rmSync(tmp, { recursive: true, force: true })
+  mkdirSync(tmp, { recursive: true })
+  try {
+    console.log(`[runtime] tải 7-Zip ${SEVEN_ZIP_VER} (Windows x64)`)
+    const installer = join(tmp, `7z${SEVEN_ZIP_VER}-x64.exe`)
+    await download(sevenZipUrl(`7z${SEVEN_ZIP_VER}-x64.exe`), installer)
+    const bin = await hostSevenZip(tmp)
+    rmSync(dest, { recursive: true, force: true })
+    execFileSync(bin, ['x', installer, `-o${dest}`, '-y', '-bso0', '-bsp0', '7z.exe', '7z.dll', 'License.txt'])
+    if (!existsSync(join(dest, '7z.exe')) || !existsSync(join(dest, '7z.dll'))) throw new Error('Thiếu 7z.exe / 7z.dll trong bộ cài 7-Zip')
+    writeFileSync(join(dest, 'VERSION'), SEVEN_ZIP_VER)
+  } finally {
+    rmSync(tmp, { recursive: true, force: true })
+  }
+}
+
+// macOS: 7zz là universal binary (arm64 + x64) → chép vào cả 2 kiến trúc.
+async function fetchSevenZipMac() {
+  const base = join(root, 'resources', 'runtime-mac')
+  const archs = ['arm64', 'x64']
+  if (archs.every((a) => existsSync(join(base, a, '7zip', '7zz')))) {
+    console.log('[runtime] 7-Zip (macOS) đã có, bỏ qua')
+    return
+  }
+  const tmp = join(base, '_tmp-7zip')
+  rmSync(tmp, { recursive: true, force: true })
+  mkdirSync(tmp, { recursive: true })
+  try {
+    console.log(`[runtime] tải 7-Zip ${SEVEN_ZIP_VER} (macOS)`)
+    const txz = join(tmp, '7z-mac.tar.xz')
+    await download(sevenZipUrl(`7z${SEVEN_ZIP_VER}-mac.tar.xz`), txz)
+    execFileSync('tar', ['-xJf', txz, '-C', tmp, '7zz', 'License.txt'])
+    for (const arch of archs) {
+      const dest = join(base, arch, '7zip')
+      mkdirSync(dest, { recursive: true })
+      copyFileSync(join(tmp, '7zz'), join(dest, '7zz'))
+      copyFileSync(join(tmp, 'License.txt'), join(dest, 'License.txt'))
+      chmodSync(join(dest, '7zz'), 0o755)
+      writeFileSync(join(dest, 'VERSION'), SEVEN_ZIP_VER)
+    }
+  } finally {
+    rmSync(tmp, { recursive: true, force: true })
+  }
+}
+
 async function fetchVcRedist() {
   const dest = join(buildDir, 'vc_redist.x64.exe')
   if (existsSync(dest)) {
@@ -137,7 +210,10 @@ async function fetchVcRedist() {
   await download('https://aka.ms/vs/17/release/vc_redist.x64.exe', dest)
 }
 
-const tasks = target === 'mac' ? [['llama-server (macOS)', fetchLlamaMac]] : [['llama-server (Windows)', fetchLlamaWin], ['vc_redist', fetchVcRedist]]
+const tasks =
+  target === 'mac'
+    ? [['llama-server (macOS)', fetchLlamaMac], ['7-Zip (macOS)', fetchSevenZipMac]]
+    : [['llama-server (Windows)', fetchLlamaWin], ['7-Zip (Windows)', fetchSevenZipWin], ['vc_redist', fetchVcRedist]]
 mkdirSync(join(root, 'resources', 'runtime'), { recursive: true })
 mkdirSync(join(root, 'resources', 'runtime-mac', 'arm64'), { recursive: true })
 mkdirSync(join(root, 'resources', 'runtime-mac', 'x64'), { recursive: true })

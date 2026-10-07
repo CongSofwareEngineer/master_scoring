@@ -1,6 +1,8 @@
 // Fingerprint code giống MOSS: chuẩn hoá (bỏ comment/khoảng trắng, thay tên biến) → k-gram token → winnowing.
+// Báo cáo Word / Excel / PowerPoint (đã chuyển thành văn bản): token = từ (chữ thường, bỏ dấu), k-gram K_TEXT từ.
 import { decodeText } from '../importer/extract'
 import { isCodeFile } from '../analysis/static'
+import { REPORT_EXTS, fileExtension } from '@shared/submissionName'
 
 export interface Fingerprint {
   files: string[]
@@ -11,6 +13,9 @@ export interface Fingerprint {
 
 const K = 10
 const W = 5
+const K_TEXT = 8
+
+const isDocText = (path: string): boolean => REPORT_EXTS.includes(fileExtension(path))
 
 const KEYWORDS = new Set(
   (
@@ -98,6 +103,16 @@ export function tokenize(src: string): Tok[] {
   return out
 }
 
+// Văn bản báo cáo: mỗi từ là 1 token (bỏ dấu, chữ thường) → bắt được chép nguyên câu dù đổi hoa/thường, dấu câu.
+export function tokenizeWords(src: string): Tok[] {
+  const out: Tok[] = []
+  src.split('\n').forEach((l, i) => {
+    const norm = l.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').toLowerCase()
+    for (const w of norm.match(/[\p{L}\p{N}]+/gu) ?? []) out.push({ t: w, line: i + 1 })
+  })
+  return out
+}
+
 function fnv1a(s: string): number {
   let h = 0x811c9dc5
   for (let i = 0; i < s.length; i++) {
@@ -110,14 +125,16 @@ function fnv1a(s: string): number {
 export function fingerprintFiles(files: Map<string, Buffer>): Fingerprint {
   const fp: Fingerprint = { files: [], h: [], f: [], l: [] }
   for (const [path, buf] of files) {
-    if (!isCodeFile(path) || /\.(css|scss)$/i.test(path)) continue
-    const toks = tokenize(decodeText(buf))
-    if (toks.length < K) continue
+    const doc = isDocText(path)
+    if (!doc && (!isCodeFile(path) || /\.(css|scss)$/i.test(path))) continue
+    const toks = doc ? tokenizeWords(decodeText(buf)) : tokenize(decodeText(buf))
+    const kk = doc ? K_TEXT : K
+    if (toks.length < kk) continue
     const fi = fp.files.push(path) - 1
     const grams: { h: number; line: number }[] = []
-    for (let i = 0; i + K <= toks.length; i++) {
+    for (let i = 0; i + kk <= toks.length; i++) {
       let s = ''
-      for (let k = 0; k < K; k++) s += toks[i + k].t + '\u0001'
+      for (let k = 0; k < kk; k++) s += toks[i + k].t + '\u0001'
       grams.push({ h: fnv1a(s), line: toks[i].line })
     }
     let lastPicked = -1

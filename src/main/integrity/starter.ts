@@ -1,7 +1,9 @@
 // Code khung (starter code) giáo viên phát: dùng để loại trừ khi so trùng lặp và khi ước lượng % code AI.
 import { existsSync, readdirSync, readFileSync, statSync } from 'fs'
 import { join, relative } from 'path'
-import { loadForGrading } from '../analysis/detect'
+import { gradingProfileId, loadForGrading } from '../analysis/detect'
+import { officeToText } from '../importer/office'
+import { REPORT_EXTS, fileExtension } from '@shared/submissionName'
 import { ALWAYS_IGNORE, matchesIgnore } from '../importer/extract'
 import { assignmentOwner, getAssignment, listProfiles } from '../repo'
 import { getSettings } from '../settings'
@@ -30,7 +32,20 @@ export async function loadStarterFiles(assignmentId: number): Promise<Map<string
   const profiles = listProfiles(assignmentOwner(assignmentId) ?? 0)
   const s = getSettings(null)
   if (statSync(a.starterDir).isFile()) {
-    return (await loadForGrading(a.starterDir, profiles, a.profileId, { maxBytes: s.maxUnzipMb * 1048576, maxFiles: s.maxFiles })).sub.files
+    return (await loadForGrading(a.starterDir, profiles, gradingProfileId(a), { maxBytes: s.maxUnzipMb * 1048576, maxFiles: s.maxFiles })).sub.files
+  }
+  if (a.kind === 'report') {
+    // Mẫu báo cáo giáo viên phát (folder chứa file Word / Excel / PowerPoint): chuyển thành văn bản để loại khỏi so trùng lặp
+    const out = new Map<string, Buffer>()
+    for (const e of readdirSync(a.starterDir, { withFileTypes: true })) {
+      if (!e.isFile() || !REPORT_EXTS.includes(fileExtension(e.name)) || e.name.startsWith('~$')) continue
+      try {
+        out.set(e.name, Buffer.from((await officeToText(readFileSync(join(a.starterDir, e.name)))).text, 'utf8'))
+      } catch {
+        /* file mẫu hỏng → bỏ qua */
+      }
+    }
+    return out
   }
   const profile = profiles.find((p) => p.id === a.profileId)
   return readFolder(a.starterDir, [...(profile?.ignore ?? []), ...ALWAYS_IGNORE])

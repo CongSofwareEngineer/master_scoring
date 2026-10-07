@@ -234,7 +234,40 @@ export const EN: Record<string, string> = {
   'Zip có mật khẩu': 'Password-protected zip',
   'Zip rỗng': 'Empty zip',
   'Zip hỏng': 'Corrupted zip',
-  'Gán tay': 'Assigned manually'
+  'Không tìm thấy 7-Zip để đọc định dạng này — cài lại app (bản có kèm 7-Zip) hoặc yêu cầu sinh viên nộp lại .zip':
+    '7-Zip was not found to read this format — reinstall the app (the build bundles 7-Zip) or ask the student to resubmit as .zip',
+  'File nén có mật khẩu': 'Password-protected archive',
+  'File nén rỗng': 'Empty archive',
+  'Không mở được file nén (định dạng không hỗ trợ hoặc file hỏng)': 'Cannot open the archive (unsupported format or corrupted file)',
+  'Gán tay': 'Assigned manually',
+  // Chấm báo cáo (Word / Excel / PowerPoint)
+  'Chấm code': 'Code grading',
+  'Chấm báo cáo (Word / Excel / PowerPoint)': 'Report grading (Word / Excel / PowerPoint)',
+  'Loại bài': 'Assignment type',
+  'Báo cáo (Word / Excel / PowerPoint)': 'Report (Word / Excel / PowerPoint)',
+  'Kiểm tra hình thức': 'Format check',
+  'Tự động · Kiểm tra hình thức': 'Auto · Format check',
+  'Đạt các yêu cầu hình thức.': 'Meets all format requirements.',
+  'Không tìm thấy file báo cáo Word / Excel / PowerPoint đọc được': 'No readable Word / Excel / PowerPoint report found',
+  'Không tìm thấy mục Tài liệu tham khảo': 'No References section found',
+  'Báo cáo không dùng style Heading của Word cho tiêu đề chương / mục (không tạo được mục lục tự động)':
+    'The report does not use Word Heading styles for chapter / section titles (no automatic table of contents)',
+  'File Word / Excel / PowerPoint chỉ chấm được ở assignment loại Báo cáo': 'Word / Excel / PowerPoint files can only be graded in a Report assignment',
+  'File vượt giới hạn dung lượng': 'The file exceeds the size limit',
+  'File Office hỏng hoặc có mật khẩu': 'Corrupted or password-protected Office file',
+  'File Office có mật khẩu': 'Password-protected Office file',
+  'File Office quá lớn': 'Office file too large',
+  'File Word có mật khẩu': 'Password-protected Word file',
+  'File Excel có mật khẩu': 'Password-protected Excel file',
+  'File PowerPoint có mật khẩu': 'Password-protected PowerPoint file',
+  'File không có chữ nào': 'The file contains no text',
+  'Không phải file Word / Excel / PowerPoint': 'Not a Word / Excel / PowerPoint file',
+  'Không phải file Word / Excel / PowerPoint (hoặc file hỏng)': 'Not a Word / Excel / PowerPoint file (or corrupted)',
+  'File Word 6.0 / 95 quá cũ — cần lưu lại bằng Word mới hơn': 'Word 6.0 / 95 file is too old — re-save it with a newer Word',
+  'File Excel 5.0 / 95 quá cũ — cần lưu lại bằng Excel mới hơn': 'Excel 5.0 / 95 file is too old — re-save it with a newer Excel',
+  'File Excel quá cũ hoặc hỏng (chỉ đọc được Excel 97 trở lên)': 'Excel file too old or corrupted (Excel 97 or later only)',
+  'File Word / Excel / PowerPoint / file nén': 'Word / Excel / PowerPoint / archive files',
+  'Câu hỏi vấn đáp chỉ áp dụng cho assignment chấm code': 'Oral questions are only available for code assignments'
 }
 
 export function translate(lang: string, s: string, vars?: Record<string, string | number>): string {
@@ -255,12 +288,22 @@ const EN_PATTERNS: [RegExp, (m: RegExpMatchArray, tr: (s: string) => string) => 
   [/^Vượt giới hạn RAM \((\d+) MB\)$/, (m) => `Memory limit exceeded (${m[1]} MB)`],
   [/^Chương trình kết thúc với mã (.+)$/, (m) => `Program exited with code ${m[1]}`],
   [/^Zip hỏng: (.*)$/s, (m) => `Corrupted zip: ${m[1]}`],
+  [/^File nén hỏng: (.*)$/s, (m) => `Corrupted archive: ${m[1]}`],
   [/^Nộp (\d+) lần — đang dùng file mới nhất$/, (m) => `Submitted ${m[1]} times — using the latest file`],
   [/^Nộp (\d+) lần — đang dùng file đã chọn$/, (m) => `Submitted ${m[1]} times — using the selected file`],
   [/^Nộp nhiều lần — đang dùng file đã chọn$/, () => 'Submitted multiple times — using the selected file'],
   [/^MSSV "(.+)" không khớp "Mẫu MSSV" trong Settings \((.*)\) — sửa mẫu rồi quét lại, hoặc gán MSSV tay$/, (m) =>
     `Student ID "${m[1]}" does not match the "Student ID pattern" in Settings (${m[2]}) — fix the pattern and rescan, or assign it manually`],
-  [/^Sai định dạng tên file .*— cần gán MSSV$/, () => 'Invalid file name (expected <StudentName>_<StudentID>.zip, e.g. HoDienCong_23546.zip) — assign the student ID manually'],
+  [/^Sai định dạng tên file .*— cần gán MSSV( tay)?$/, () => 'Invalid file name (expected <StudentName>_<StudentID>.<ext>, e.g. HoDienCong_23546.zip) — assign the student ID manually'],
+  [/^Kiểm tra hình thức: (\d+) lỗi, (\d+) cảnh báo\.$/, (m) => `Format check: ${m[1]} errors, ${m[2]} warnings.`],
+  [/^Báo cáo có (\d+) từ, ít hơn yêu cầu tối thiểu (\d+) từ$/, (m) => `The report has ${m[1]} words, fewer than the required minimum of ${m[2]}`],
+  [/^Báo cáo có (\d+) từ, vượt giới hạn (\d+) từ$/, (m) => `The report has ${m[1]} words, exceeding the limit of ${m[2]}`],
+  [/^Thiếu mục bắt buộc: "(.+)"$/, (m) => `Missing required section: "${m[1]}"`],
+  [/^Bài nộp có (\d+) file báo cáo — chấm gộp tất cả$/, (m) => `The submission has ${m[1]} report files — all are graded together`],
+  [/^Chưa đọc được file (\.\w+) — cần nộp file Word \/ Excel \/ PowerPoint: (.+)$/, (m) => `Cannot read ${m[1]} files yet — a Word / Excel / PowerPoint file is required: ${m[2]}`],
+  [/^Bỏ qua file quá lớn \(> 100 MB\): (.+)$/, (m) => `Skipped file larger than 100 MB: ${m[1]}`],
+  [/^File (Word|Excel|PowerPoint|Office|Word \.doc|Excel \.xls) (.*hỏng.*)$/, (m) => `Corrupted ${m[1]} file${m[2].includes(':') ? ':' + m[2].split(':').slice(1).join(':') : ''}`],
+  [/^File (Word|Excel|PowerPoint) không có nội dung .*$/, (m) => `The ${m[1]} file has no content`],
   // Lỗi test case: "<tên test>: <lỗi>"
   [/^(.+?): (Quá thời gian .*|Vượt giới hạn RAM .*|Output .*|Chương trình kết thúc .*)$/s, (m, tr) => `${m[1]}: ${tr(m[2])}`]
 ]

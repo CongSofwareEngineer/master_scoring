@@ -1,13 +1,14 @@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
-import { round2, SOURCE_LABEL } from '@shared/constants'
-import type { Criterion, CriterionSource } from '@shared/types'
+import { round2, sourceLabel, sourcesFor } from '@shared/constants'
+import type { AssignmentKind, Criterion, CriterionSource } from '@shared/types'
 import { uid } from '../lib/format'
 
 export function rubricTotal(r: Criterion[]): number {
   return round2(r.reduce((s, c) => s + (Number(c.max) || 0), 0))
 }
 
-export function RubricEditor({ value, onChange }: { value: Criterion[]; onChange: (r: Criterion[]) => void }): JSX.Element {
+export function RubricEditor({ value, onChange, kind = 'code' }: { value: Criterion[]; onChange: (r: Criterion[]) => void; kind?: AssignmentKind }): JSX.Element {
+  const sources = sourcesFor(kind)
   const total = rubricTotal(value)
   const update = (i: number, patch: Partial<Criterion>): void => onChange(value.map((c, k) => (k === i ? { ...c, ...patch } : c)))
   const move = (i: number, d: number): void => {
@@ -54,9 +55,10 @@ export function RubricEditor({ value, onChange }: { value: Criterion[]; onChange
                 </td>
                 <td>
                   <select className="select input-sm" value={c.source} onChange={(e) => update(i, { source: e.target.value as CriterionSource })}>
-                    {(Object.keys(SOURCE_LABEL) as CriterionSource[]).map((s) => (
-                      <option key={s} value={s}>
-                        {SOURCE_LABEL[s]}
+                    {(sources.includes(c.source) ? sources : [...sources, c.source]).map((s) => (
+                      <option key={s} value={s} disabled={!sources.includes(s)}>
+                        {sourceLabel(s, kind)}
+                        {!sources.includes(s) ? ' (không dùng cho báo cáo)' : ''}
                       </option>
                     ))}
                   </select>

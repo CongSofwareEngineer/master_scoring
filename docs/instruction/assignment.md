@@ -10,18 +10,22 @@
 ## Logic chính
 
 - Lưu trong bảng `assignments` dạng JSON (`data`), thuộc 1 giáo viên (`user_id`). Đọc ra = `DEFAULT_ASSIGNMENT` ← data,
-  `aiPolicy` luôn qua `normalizePolicy`.
+  `aiPolicy` luôn qua `normalizePolicy`; `kind` thiếu → `code`; `reportCheck` ← `DEFAULT_REPORT_CHECK`.
+- **Loại bài (`kind`):** `code` (chấm code theo Tech Profile) hoặc `report` (chấm báo cáo .docx — ẩn chọn công nghệ,
+  tab Test case thay bằng tab Kiểm tra hình thức `reportCheck`, rubric mẫu `REPORT_RUBRIC`). Chi tiết:
+  [report-grading.md](report-grading.md).
 - Trang Assignments có các tab: Thông tin (`InfoTab`), Chính sách AI (`AiPolicyTab`), Rubric (`RubricTab`), Test case
   (`TestsTab`), Bài nộp (`SubmissionsTab`).
 - **Rubric:** mỗi tiêu chí có `id`, `name`, `max`, `source` ∈ `compile | test | static | ai | teacher`, mô tả.
-  `validateRubric`: phải có ≥ 1 tiêu chí, **tổng max = 10**, tên không trống, id không trùng. `max` làm tròn 2 số lẻ.
+  `validateRubric(rubric, kind)`: phải có ≥ 1 tiêu chí, **tổng max = 10**, tên không trống, id không trùng; báo cáo
+  không được dùng nguồn `compile` / `test` (`sourcesFor`). `max` làm tròn 2 số lẻ.
   Chọn Tech Profile sẽ gợi ý rubric mẫu của profile đó (`BUILTIN_PROFILES[].rubric`).
 - **Rubric mẫu:** giáo viên lưu rubric hiện tại thành template (`rubric_templates`) để dùng lại.
 - **Test case (C/C++):** `input`, `expected`; tuỳ chọn `ignoreWhitespace`, `timeLimitMs` (mặc định 2000),
   `memoryLimitMb` (256).
 - **Backend:** `local` hoặc `cloud` (+ `cloudProvider`, `cloudModel`, `cloudConsent` — bắt buộc tick đồng ý gửi code ra
   ngoài).
-- **Đường dẫn:** `submissionsDir` (chọn folder), `starterDir` (code khung: folder hoặc zip).
+- **Đường dẫn:** `submissionsDir` (chọn folder), `starterDir` (code khung: folder hoặc 1 file nén — hộp chọn file nhận mọi đuôi trong `SUPPORTED_EXTS`, đọc như bài nộp).
 - Lưu assignment mà `aiPolicy` thay đổi → `recomputePenalties()` tính lại điểm trừ + tổng điểm các bài đã chấm.
 - Xoá assignment → xoá students, results, integrity_pairs liên quan.
 - Assignment đang chọn nhớ theo user trong `localStorage['ms:lastAssignment:<userId>']`.

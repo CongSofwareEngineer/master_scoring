@@ -13,6 +13,9 @@
   tiên.
 - **Kết quả:** điểm từng tiêu chí + lý do + bằng chứng (nhảy tới dòng), issues theo nguồn (`Compile`, `Test`, `Static`,
   `AI`), output compile / test case, cảnh báo giải nén, tab nguồn gốc code (% AI theo đoạn), tab câu hỏi vấn đáp.
+- **Báo cáo .docx:** file hiện dưới dạng văn bản đã chuyển (heading `#`, bảng `| ô |`); tab Tự động có khung Kiểm tra
+  hình thức (số từ, trang, danh sách heading bấm để nhảy dòng, mục thiếu). Nhãn nguồn `static` = "Tự động · Kiểm tra
+  hình thức" (`sourceLabel`). Đọc bài theo `gradingProfileId(a)`.
 - **Sửa điểm (`result:override`):** điểm trong 0..max của tiêu chí, làm tròn 2 số; `null` = bỏ sửa. Lưu ở `overrides`,
   được ưu tiên khi tính tổng và **giữ qua các lần chấm lại** (trừ Reset). Bài chưa chấm mà sửa điểm → `completed`.
 - **Trừ điểm AI:** áp / bỏ theo quyết định giáo viên (xem `ai-estimate.md`).

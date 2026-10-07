@@ -18,8 +18,8 @@ import {
   X
 } from 'lucide-react'
 import { evaluatePenalty } from '@shared/aiPolicy'
-import { AUTO_PROFILE_ID, CLOUD_PROVIDERS, DEFAULT_AI_POLICY } from '@shared/constants'
-import type { AiConfidence, AiEstimate, AiPenaltyMode, AiPolicy, Assignment, CloudProvider, Criterion, ScanSummary, StudentRow, TestCase } from '@shared/types'
+import { AUTO_PROFILE_ID, CLOUD_PROVIDERS, DEFAULT_AI_POLICY, DEFAULT_REPORT_CHECK, REPORT_PROFILE, REPORT_RUBRIC } from '@shared/constants'
+import type { AiConfidence, AiEstimate, AiPenaltyMode, AiPolicy, Assignment, AssignmentKind, CloudProvider, Criterion, ReportCheck, ScanSummary, StudentRow, TestCase } from '@shared/types'
 import { call, on } from '../lib/api'
 import { cls, uid } from '../lib/format'
 import { useT } from '../lib/i18n'
@@ -28,7 +28,7 @@ import { resetAndRegrade } from '../components/AssignmentFilter'
 import { RubricEditor } from '../components/RubricEditor'
 import { confirmDialog, Empty, Field, Modal, Switch } from '../components/ui'
 
-type Tab = 'info' | 'rubric' | 'tests' | 'ai' | 'submissions'
+type Tab = 'info' | 'rubric' | 'tests' | 'format' | 'ai' | 'submissions'
 
 export function AssignmentsPage(): JSX.Element {
   const t = useT()
@@ -47,7 +47,7 @@ export function AssignmentsPage(): JSX.Element {
       <div className="page-header">
         <div>
           <div className="page-title">{t('Assignments')}</div>
-          <div className="meta mt-8">Tạo bài tập, chọn công nghệ, rubric, test case và folder bài nộp</div>
+          <div className="meta mt-8">Tạo bài tập (chấm code hoặc chấm báo cáo Word / Excel / PowerPoint), rubric, test case / kiểm tra hình thức và folder bài nộp</div>
         </div>
         <div className="actions">
           <button className="btn btn-primary" onClick={() => setCreating(true)}>
@@ -73,7 +73,8 @@ export function AssignmentsPage(): JSX.Element {
                   {a.name}
                 </div>
                 <div className="meta truncate">
-                  {a.className || '—'} · {useStore.getState().profiles.find((p) => p.id === a.profileId)?.name ?? a.profileId}
+                  {a.className || '—'} ·{' '}
+                  {a.kind === 'report' ? t(REPORT_PROFILE.name) : (useStore.getState().profiles.find((p) => p.id === a.profileId)?.name ?? a.profileId)}
                   {a.backend === 'cloud' && ' · Cloud'}
                 </div>
               </div>
@@ -106,11 +107,21 @@ function CreateAssignment({ onCreated, onCancel }: { onCreated: (a: Assignment) 
   const loadAssignments = useStore((s) => s.loadAssignments)
   const [name, setName] = useState('')
   const [className, setClassName] = useState('')
+  const [kind, setKind] = useState<AssignmentKind>('code')
   const [profileId, setProfileId] = useState(profiles[0]?.id ?? 'cpp')
   const create = async (): Promise<void> => {
     const profile = profiles.find((p) => p.id === profileId)
+    const rubric = kind === 'report' ? REPORT_RUBRIC : (profile?.rubric ?? [])
     const a = await attempt(
-      () => call<Assignment>('assign:save', { name: name.trim(), className: className.trim(), profileId, rubric: profile?.rubric ?? [] }),
+      () =>
+        call<Assignment>('assign:save', {
+          name: name.trim(),
+          className: className.trim(),
+          kind,
+          reportCheck: DEFAULT_REPORT_CHECK,
+          profileId,
+          rubric: rubric.map((c) => ({ ...c }))
+        }),
       'Đã tạo assignment'
     )
     if (a) {
@@ -135,6 +146,8 @@ function CreateAssignment({ onCreated, onCancel }: { onCreated: (a: Assignment) 
         <Field label="Lớp">
           <input className="input" value={className} onChange={(e) => setClassName(e.target.value)} placeholder="VD: ST4 Ca 2" />
         </Field>
+        <KindField value={kind} onChange={setKind} />
+        {kind === 'code' && (
         <Field
           label="Loại công nghệ (Tech Profile)"
           hint={
@@ -151,6 +164,7 @@ function CreateAssignment({ onCreated, onCancel }: { onCreated: (a: Assignment) 
             ))}
           </select>
         </Field>
+        )}
       </div>
       <div className="row mt-16">
         <button className="btn btn-primary" disabled={!name.trim()} onClick={create}>
@@ -158,6 +172,26 @@ function CreateAssignment({ onCreated, onCancel }: { onCreated: (a: Assignment) 
         </button>
       </div>
     </div>
+  )
+}
+
+// Loại bài quyết định bộ filter chấm: code (Tech Profile, compile/test...) hay báo cáo Word / Excel / PowerPoint (kiểm tra hình thức + AI).
+function KindField({ value, onChange }: { value: AssignmentKind; onChange: (k: AssignmentKind) => void }): JSX.Element {
+  const t = useT()
+  return (
+    <Field
+      label={t('Loại bài')}
+      hint={
+        value === 'report'
+          ? 'Bài nộp là file Word (.doc/.docx), Excel (.xls/.xlsx) hoặc PowerPoint (.ppt/.pptx) — nộp thẳng hoặc trong file nén. Chấm theo rubric báo cáo: kiểm tra hình thức tự động + AI chấm nội dung.'
+          : 'Chấm mã nguồn theo Tech Profile: biên dịch, test case, phân tích tĩnh + AI chấm.'
+      }
+    >
+      <select className="select" value={value} onChange={(e) => onChange(e.target.value as AssignmentKind)}>
+        <option value="code">{t('Chấm code')}</option>
+        <option value="report">{t('Chấm báo cáo (Word / Excel / PowerPoint)')}</option>
+      </select>
+    </Field>
   )
 }
 
@@ -169,7 +203,12 @@ function AssignmentEditor({ id, initialTab }: { id: number; initialTab: Tab }): 
   const ai = useStore((s) => s.ai)
   const original = assignments.find((a) => a.id === id)!
   const [draft, setDraft] = useState<Assignment>(original)
-  const [tab, setTab] = useState<Tab>(['info', 'rubric', 'tests', 'ai', 'submissions'].includes(initialTab) ? initialTab : 'info')
+  const [tab, setTab] = useState<Tab>(['info', 'rubric', 'tests', 'format', 'ai', 'submissions'].includes(initialTab) ? initialTab : 'info')
+  const report = draft.kind === 'report'
+  useEffect(() => {
+    if (report && tab === 'tests') setTab('format')
+    else if (!report && tab === 'format') setTab('tests')
+  }, [report, tab])
   const [canStart, setCanStart] = useState<{ ok: boolean; reason?: string }>({ ok: false })
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(original), [draft, original])
 
@@ -232,7 +271,7 @@ function AssignmentEditor({ id, initialTab }: { id: number; initialTab: Tab }): 
           [
             ['info', 'Thông tin chung'],
             ['rubric', 'Rubric'],
-            ['tests', 'Test case'],
+            report ? ['format', t('Kiểm tra hình thức')] : ['tests', 'Test case'],
             ['ai', 'Chính sách AI'],
             ['submissions', 'Bài nộp']
           ] as [Tab, string][]
@@ -244,7 +283,8 @@ function AssignmentEditor({ id, initialTab }: { id: number; initialTab: Tab }): 
       </div>
       {tab === 'info' && <InfoTab draft={draft} patch={patch} />}
       {tab === 'rubric' && <RubricTab draft={draft} patch={patch} />}
-      {tab === 'tests' && <TestsTab draft={draft} patch={patch} />}
+      {tab === 'tests' && !report && <TestsTab draft={draft} patch={patch} />}
+      {tab === 'format' && report && <FormatTab draft={draft} patch={patch} />}
       {tab === 'ai' && <AiPolicyTab draft={draft} patch={patch} />}
       {tab === 'submissions' && <SubmissionsTab assignment={original} onBeforeAction={async () => (dirty ? save() : true)} />}
     </div>
@@ -256,6 +296,18 @@ function InfoTab({ draft, patch }: { draft: Assignment; patch: (p: Partial<Assig
   const ai = useStore((s) => s.ai)
   const go = useStore((s) => s.go)
   const cloudOk = ai?.cloudConfigured.includes(draft.cloudProvider)
+  const report = draft.kind === 'report'
+  const changeKind = async (kind: AssignmentKind): Promise<void> => {
+    if (kind === draft.kind) return
+    const rubric = kind === 'report' ? REPORT_RUBRIC : (profiles.find((p) => p.id === draft.profileId)?.rubric ?? [])
+    const replace = await confirmDialog(
+      kind === 'report'
+        ? 'Chuyển sang chấm báo cáo (Word / Excel / PowerPoint). Thay rubric hiện tại bằng rubric mẫu cho báo cáo? (Báo cáo không dùng tiêu chí Compile / Test.)\n\nHuỷ = giữ rubric hiện tại.'
+        : 'Chuyển sang chấm code. Thay rubric hiện tại bằng rubric mẫu của Tech Profile đang chọn?\n\nHuỷ = giữ rubric hiện tại.',
+      { okLabel: 'Thay rubric' }
+    )
+    patch({ kind, ...(replace ? { rubric: rubric.map((c) => ({ ...c })) } : {}) })
+  }
   return (
     <div className="col gap-16">
       <div className="form-grid">
@@ -265,15 +317,18 @@ function InfoTab({ draft, patch }: { draft: Assignment; patch: (p: Partial<Assig
         <Field label="Lớp">
           <input className="input" value={draft.className} onChange={(e) => patch({ className: e.target.value })} />
         </Field>
-        <Field label="Loại công nghệ">
-          <select className="select" value={draft.profileId} onChange={(e) => patch({ profileId: e.target.value })}>
-            {profiles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <KindField value={draft.kind} onChange={(k) => void changeKind(k)} />
+        {!report && (
+          <Field label="Loại công nghệ">
+            <select className="select" value={draft.profileId} onChange={(e) => patch({ profileId: e.target.value })}>
+              {profiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
         <Field label="Ngưỡng đạt (/10)" hint="Dùng để tính Pass Rate">
           <input
             className="input"
@@ -286,7 +341,10 @@ function InfoTab({ draft, patch }: { draft: Assignment; patch: (p: Partial<Assig
           />
         </Field>
       </div>
-      <Field label="Đề bài" hint="Dán đề bài để AI chấm tiêu chí “Đúng yêu cầu đề”.">
+      <Field
+        label="Đề bài"
+        hint={report ? 'Dán đề / yêu cầu báo cáo (nội dung cần có, tiêu chí đánh giá) để AI chấm tiêu chí “Nội dung & đúng yêu cầu đề”.' : 'Dán đề bài để AI chấm tiêu chí “Đúng yêu cầu đề”.'}
+      >
         <textarea
           className="textarea"
           rows={8}
@@ -345,7 +403,7 @@ function InfoTab({ draft, patch }: { draft: Assignment; patch: (p: Partial<Assig
               <div className="callout warning mt-12">
                 <AlertTriangle size={16} />
                 <div className="col gap-8">
-                  <span>Code của sinh viên trong assignment này sẽ được gửi tới máy chủ của nhà cung cấp (họ tên và MSSV được ẩn nếu bật trong Settings).</span>
+                  <span>{report ? 'Báo cáo' : 'Code'} của sinh viên trong assignment này sẽ được gửi tới máy chủ của nhà cung cấp (họ tên và MSSV được ẩn nếu bật trong Settings).</span>
                   <label className="check">
                     <input type="checkbox" checked={draft.cloudConsent} onChange={(e) => patch({ cloudConsent: e.target.checked })} />
                     <b>Tôi đồng ý</b>
@@ -476,10 +534,16 @@ function RubricTab({ draft, patch }: { draft: Assignment; patch: (p: Partial<Ass
     <div className="col gap-12">
       <div className="row wrap">
         <span className="meta">Áp dụng mẫu:</span>
-        {profile && (
-          <button className="btn btn-sm" onClick={() => apply(profile.rubric)}>
-            <ListChecks size={13} /> Rubric mẫu {profile.name}
+        {draft.kind === 'report' ? (
+          <button className="btn btn-sm" onClick={() => apply(REPORT_RUBRIC)}>
+            <ListChecks size={13} /> Rubric mẫu báo cáo
           </button>
+        ) : (
+          profile && (
+            <button className="btn btn-sm" onClick={() => apply(profile.rubric)}>
+              <ListChecks size={13} /> Rubric mẫu {profile.name}
+            </button>
+          )
         )}
         {templates.length > 0 && (
           <select
@@ -504,10 +568,17 @@ function RubricTab({ draft, patch }: { draft: Assignment; patch: (p: Partial<Ass
           <Save size={13} /> Lưu làm mẫu
         </button>
       </div>
-      <div className="meta">
-        Nguồn chấm: <b>Tự động</b> (compile/test/phân tích tĩnh — khách quan), <b>AI</b> (nhận xét của model), <b>Giáo viên</b> (chấm tay trong Code Review).
-      </div>
-      <RubricEditor value={draft.rubric} onChange={(rubric) => patch({ rubric })} />
+      {draft.kind === 'report' ? (
+        <div className="meta">
+          Nguồn chấm: <b>Tự động · Kiểm tra hình thức</b> (số từ, mục bắt buộc, tài liệu tham khảo — cấu hình ở tab Kiểm tra hình thức), <b>AI</b> (đánh giá nội dung,
+          bố cục, lập luận, diễn đạt), <b>Giáo viên</b> (chấm tay trong Code Review).
+        </div>
+      ) : (
+        <div className="meta">
+          Nguồn chấm: <b>Tự động</b> (compile/test/phân tích tĩnh — khách quan), <b>AI</b> (nhận xét của model), <b>Giáo viên</b> (chấm tay trong Code Review).
+        </div>
+      )}
+      <RubricEditor value={draft.rubric} onChange={(rubric) => patch({ rubric })} kind={draft.kind} />
       {saveName !== null && (
         <Modal
           title="Lưu rubric làm mẫu"
@@ -520,7 +591,7 @@ function RubricTab({ draft, patch }: { draft: Assignment; patch: (p: Partial<Ass
               <button
                 className="btn btn-primary"
                 onClick={async () => {
-                  await call('rubric:saveTemplate', saveName, draft.profileId, draft.rubric)
+                  await call('rubric:saveTemplate', saveName, draft.kind === 'report' ? REPORT_PROFILE.id : draft.profileId, draft.rubric)
                   toast('Đã lưu rubric mẫu', 'success')
                   setSaveName(null)
                   loadTemplates()
@@ -536,6 +607,60 @@ function RubricTab({ draft, patch }: { draft: Assignment; patch: (p: Partial<Ass
           </Field>
         </Modal>
       )}
+    </div>
+  )
+}
+
+// Filter chấm riêng của báo cáo: các yêu cầu hình thức kiểm tra tự động (tiêu chí nguồn "Tự động · Kiểm tra hình thức").
+function FormatTab({ draft, patch }: { draft: Assignment; patch: (p: Partial<Assignment>) => void }): JSX.Element {
+  const rc: ReportCheck = { ...DEFAULT_REPORT_CHECK, ...draft.reportCheck }
+  const set = (p: Partial<ReportCheck>): void => patch({ reportCheck: { ...rc, ...p } })
+  const [sections, setSections] = useState(rc.requiredSections.join('\n'))
+  useEffect(() => setSections(rc.requiredSections.join('\n')), [draft.id])
+  const hasFormat = draft.rubric.some((c) => c.source === 'static')
+  return (
+    <div className="col gap-16">
+      <div className="callout info">
+        <ListChecks size={16} />
+        <span>
+          Bài nộp là file Word <b>.doc / .docx</b>, Excel <b>.xls / .xlsx</b> hoặc PowerPoint <b>.ppt / .pptx</b> (nộp thẳng <code>&lt;TenSV&gt;_&lt;MSSV&gt;.docx</code> hoặc nằm
+          trong file nén). Văn bản được trích ra (tiêu đề → <code>#</code>, bảng / hàng Excel → <code>| ô |</code>, mỗi sheet / slide là một tiêu đề) để AI chấm và để xem trong Code Review. Các yêu cầu dưới đây chấm tiêu chí nguồn <b>Tự động · Kiểm tra hình thức</b>: mỗi lỗi trừ 30%,
+          mỗi cảnh báo trừ 10% điểm tiêu chí đó.
+        </span>
+      </div>
+      {!hasFormat && (
+        <div className="callout warning">
+          <AlertTriangle size={16} />
+          <span>Rubric chưa có tiêu chí nguồn “Tự động · Kiểm tra hình thức” — kết quả kiểm tra chỉ hiện để tham khảo, không tính điểm.</span>
+        </div>
+      )}
+      <div className="form-grid">
+        <Field label="Số từ tối thiểu" hint="0 = không kiểm tra. Thiếu dưới 70% mức này tính là lỗi, còn lại là cảnh báo.">
+          <input className="input" type="number" min={0} step={100} value={rc.minWords} onChange={(e) => set({ minWords: Math.max(0, Number(e.target.value) || 0) })} />
+        </Field>
+        <Field label="Số từ tối đa" hint="0 = không giới hạn">
+          <input className="input" type="number" min={0} step={100} value={rc.maxWords} onChange={(e) => set({ maxWords: Math.max(0, Number(e.target.value) || 0) })} />
+        </Field>
+      </div>
+      <Field
+        label="Các mục bắt buộc (mỗi dòng một mục)"
+        hint="So khớp với tiêu đề chương / mục trong báo cáo, không phân biệt hoa thường, dấu và số thứ tự (vd “Chương 1: Mở đầu” khớp “Mở đầu”). Thiếu mỗi mục = 1 cảnh báo."
+      >
+        <textarea
+          className="textarea"
+          rows={6}
+          value={sections}
+          onChange={(e) => setSections(e.target.value)}
+          onBlur={() => set({ requiredSections: sections.split('\n').map((x) => x.trim()).filter(Boolean) })}
+          placeholder={'Mở đầu\nCơ sở lý thuyết\nKết quả\nKết luận'}
+        />
+      </Field>
+      <Switch checked={rc.requireReferences} onChange={(v) => set({ requireReferences: v })} label="Bắt buộc có mục Tài liệu tham khảo" />
+      <div>
+        <button className="btn btn-sm btn-ghost" onClick={() => (setSections(DEFAULT_REPORT_CHECK.requiredSections.join('\n')), patch({ reportCheck: DEFAULT_REPORT_CHECK }))}>
+          Khôi phục mặc định
+        </button>
+      </div>
     </div>
   )
 }
@@ -643,10 +768,11 @@ function SubmissionsTab({ assignment, onBeforeAction }: { assignment: Assignment
   }
   const pickStarter = async (kind: 'folder' | 'zip'): Promise<void> => {
     if (!(await onBeforeAction())) return
-    const r = await attempt(() => call('assign:pickStarter', assignment.id, kind), 'Đã chọn code khung')
+    const r = await attempt(() => call('assign:pickStarter', assignment.id, kind), report ? 'Đã chọn mẫu báo cáo' : 'Đã chọn code khung')
     if (r) await loadAssignments()
   }
 
+  const report = assignment.kind === 'report'
   const group = (st: string): StudentRow[] => students.filter((s) => s.scanStatus === st)
   const needs = group('needs_assign')
   const dups = students.filter((s) => s.scanStatus === 'valid' && s.altFiles.length)
@@ -659,7 +785,7 @@ function SubmissionsTab({ assignment, onBeforeAction }: { assignment: Assignment
         <div className="row wrap">
           <FolderOpen size={16} className="text-2" />
           <div className="grow" style={{ minWidth: 200 }}>
-            <div className="label">Folder chứa file zip bài nộp</div>
+            <div className="label">{report ? 'Folder chứa file Word / Excel / PowerPoint / file nén bài nộp' : 'Folder chứa file nén bài nộp'}</div>
             <div className="mono truncate" title={assignment.submissionsDir}>
               {assignment.submissionsDir || <span className="muted">Chưa chọn</span>}
             </div>
@@ -672,9 +798,16 @@ function SubmissionsTab({ assignment, onBeforeAction }: { assignment: Assignment
             {scanning ? `Đang quét ${scanning.done}/${scanning.total}` : 'Quét lại'}
           </button>
         </div>
-        <div className="meta mt-8">
-          Quy ước tên file: <code>&lt;TenSV&gt;_&lt;MSSV&gt;.zip</code> — ví dụ <code>HoDienCong_23546.zip</code>. Tách theo dấu “_” cuối cùng.
-        </div>
+        {report ? (
+          <div className="meta mt-8">
+            Quy ước tên file: <code>&lt;TenSV&gt;_&lt;MSSV&gt;.docx</code> (hoặc .doc, .xlsx, .xls, .pptx, .ppt) — ví dụ <code>HoDienCong_23546.docx</code>, hoặc file nén
+            <code>HoDienCong_23546.zip</code> chứa các file đó. Tách theo dấu “_” cuối cùng. File .pdf chưa đọc được — yêu cầu sinh viên nộp file Word / Excel / PowerPoint.
+          </div>
+        ) : (
+          <div className="meta mt-8">
+            Quy ước tên file: <code>&lt;TenSV&gt;_&lt;MSSV&gt;.zip</code> — ví dụ <code>HoDienCong_23546.zip</code>. Tách theo dấu “_” cuối cùng. Nhận cả .rar, .7z, .tar(.gz), .iso, .dmg, .arj, .cab, .lzh (đọc bằng 7-Zip).
+          </div>
+        )}
       </div>
 
       {summary && summary.total + summary.missing > 0 && (
@@ -702,10 +835,10 @@ function SubmissionsTab({ assignment, onBeforeAction }: { assignment: Assignment
           </div>
           <div className="card stat">
             <div className="stat-label">
-              <FileWarning size={14} className="error" /> Zip lỗi / không hỗ trợ
+              <FileWarning size={14} className="error" /> File nén lỗi / không hỗ trợ
             </div>
             <div className="stat-value">{summary.broken + summary.unsupported}</div>
-            <div className="stat-sub">{summary.missing ? `${summary.missing} SV chưa nộp` : 'hỏng, mật khẩu, .rar/.7z'}</div>
+            <div className="stat-sub">{summary.missing ? `${summary.missing} SV chưa nộp` : 'hỏng, mật khẩu, không mở được'}</div>
           </div>
         </div>
       )}
@@ -778,7 +911,7 @@ function SubmissionsTab({ assignment, onBeforeAction }: { assignment: Assignment
       {broken.length > 0 && (
         <div className="card flush">
           <div className="card-header">
-            <span className="card-title">Zip lỗi / không hỗ trợ ({broken.length})</span>
+            <span className="card-title">File nén lỗi / không hỗ trợ ({broken.length})</span>
           </div>
           <table className="table">
             <tbody>
@@ -811,14 +944,16 @@ function SubmissionsTab({ assignment, onBeforeAction }: { assignment: Assignment
           </div>
         </div>
         <div className="choice-card">
-          <div className="card-title">Code khung (starter code)</div>
-          <div className="meta mt-8">Phần code giáo viên phát được loại trừ khi so sánh trùng lặp.</div>
+          <div className="card-title">{report ? 'Mẫu báo cáo giáo viên phát' : 'Code khung (starter code)'}</div>
+          <div className="meta mt-8">
+            {report ? 'Phần văn bản mẫu (trang bìa, đề cương…) được loại trừ khi so sánh trùng lặp.' : 'Phần code giáo viên phát được loại trừ khi so sánh trùng lặp.'}
+          </div>
           <div className="row mt-12 wrap">
             <button className="btn btn-sm" onClick={() => pickStarter('folder')}>
               Chọn folder
             </button>
             <button className="btn btn-sm" onClick={() => pickStarter('zip')}>
-              Chọn file zip
+              {report ? 'Chọn file Word / Excel / PowerPoint / file nén' : 'Chọn file nén'}
             </button>
             {assignment.starterDir && (
               <span className="meta mono truncate" style={{ maxWidth: 220 }} title={assignment.starterDir}>

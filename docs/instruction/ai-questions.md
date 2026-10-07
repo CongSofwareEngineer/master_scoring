@@ -15,7 +15,8 @@
 - Giáo viên bấm "Tạo câu hỏi / Tạo lại" trong Code Review → `regenerateQuestions` (đọc lại bài từ zip). Bị chặn khi Local
   AI đang chấm hàng đợi, hoặc bài đó đang được tạo câu hỏi.
 - Chọn đoạn đưa vào prompt: đoạn nghi AI nhất trước (bỏ code khung), mỗi đoạn tối đa 60 dòng, trong ngân sách token
-  (≤ 12k; Local theo `contextSize`, Cloud 32k).
+  (≤ 12k; context theo `effectiveContext` — Local tối đa 32K, Cloud = `contextSize`).
+- Chỉ áp dụng cho assignment chấm code: assignment báo cáo bỏ qua bước này, `regenerateQuestions` báo lỗi.
 - AI trả JSON `{ questions: [...] }` (3–8 câu, mục tiêu 6), mỗi câu gắn file / dòng; kiểm tra dòng tồn tại, thử lại 1 lần
   nếu không hợp lệ. Ngôn ngữ theo chủ assignment; Cloud + `anonymizeCloud` → ẩn danh như khi chấm.
 - Lưu `results.ai_questions = { generatedAt, model, aiPercent, items, error? }`.

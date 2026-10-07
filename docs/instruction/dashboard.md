@@ -12,7 +12,7 @@
   lỗi, histogram 10 cột (0–10), trung bình từng tiêu chí (ưu tiên điểm sửa).
 - AI: số bài tín hiệu AI trung bình / cao, % AI trung bình, số bài bị trừ điểm.
 - Trùng lặp (nếu bật): số cặp vượt ngưỡng, số SV bị đánh dấu, số nhóm.
-- Cảnh báo: sai tên file, zip hỏng, .rar/.7z, nộp trùng, không compile được, chấm lỗi, chưa nộp — nhấp để lọc danh sách
+- Cảnh báo: sai tên file, file nén hỏng / mật khẩu / không mở được, thiếu 7-Zip (`unsupported`), nộp trùng, không compile được, chấm lỗi, chưa nộp — nhấp để lọc danh sách
   sinh viên.
 - 8 bài chấm gần nhất.
 - Biểu đồ vẽ bằng SVG tự viết (không dùng thư viện chart).

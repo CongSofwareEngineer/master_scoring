@@ -45,9 +45,9 @@ export function dashboardData(assignmentId: number): DashboardData {
   const count = (st: string): number => all.filter((s) => s.scanStatus === st).length
   const failed = valid.filter((s) => s.status === 'failed').length
   const alerts = [
-    { kind: 'needs_assign', count: count('needs_assign'), label: 'file zip sai định dạng tên (cần gán MSSV)' },
-    { kind: 'broken', count: count('broken'), label: 'file zip hỏng / có mật khẩu' },
-    { kind: 'unsupported', count: count('unsupported'), label: 'file .rar/.7z không hỗ trợ' },
+    { kind: 'needs_assign', count: count('needs_assign'), label: 'file nộp sai định dạng tên (cần gán MSSV)' },
+    { kind: 'broken', count: count('broken'), label: 'file nén hỏng / có mật khẩu / không mở được' },
+    { kind: 'unsupported', count: count('unsupported'), label: 'file nén không đọc được (máy thiếu 7-Zip)' },
     { kind: 'duplicate', count: count('duplicate_old'), label: 'lần nộp trùng MSSV' },
     { kind: 'compile', count: compileFailed, label: 'bài không compile được' },
     { kind: 'failed', count: failed, label: 'bài chấm lỗi' },

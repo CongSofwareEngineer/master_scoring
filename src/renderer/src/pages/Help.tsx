@@ -63,6 +63,16 @@ function Overview(): JSX.Element {
           </div>
         </div>
         <div className="row gap-12">
+          <FileText size={20} />
+          <div className="col gap-2">
+            <strong>Chấm báo cáo / bài viết (Word / Excel / PowerPoint)</strong>
+            <span className="meta">
+              Assignment loại “Chấm báo cáo”: đọc file Word (.doc/.docx), Excel (.xls/.xlsx), PowerPoint (.ppt/.pptx), kiểm tra hình thức (số từ, mục bắt buộc, tài liệu tham khảo), AI chấm nội dung theo rubric báo cáo,
+              so trùng lặp văn bản giữa các bài
+            </span>
+          </div>
+        </div>
+        <div className="row gap-12">
           <SettingsIcon size={20} />
           <div className="col gap-2">
             <strong>Cấu hình linh hoạt</strong>
@@ -173,21 +183,40 @@ function NamingConventions(): JSX.Element {
       <div className="col gap-8">
         <div className="row gap-12">
           <strong>✅ Được hỗ trợ:</strong>
-          <div className="row gap-4 mono">
+          <div className="row wrap gap-4 mono">
             <span>.zip</span>
+            <span>.rar</span>
+            <span>.7z</span>
+            <span>.tar</span>
+            <span>.tar.gz / .tgz</span>
+            <span>.tar.bz2</span>
+            <span>.tar.xz</span>
+            <span>.iso</span>
+            <span>.dmg</span>
+            <span>.arj</span>
+            <span>.cab</span>
+            <span>.lzh</span>
           </div>
         </div>
         <div className="row gap-12">
           <strong className="error">❌ Không hỗ trợ:</strong>
           <div className="row gap-4 mono error">
-            <span>.rar</span>
-            <span>.7z</span>
-            <span>.tar.gz</span>
-            <span>.zip có mật khẩu</span>
+            <span>file nén có mật khẩu</span>
+            <span>.arc / .pak kiểu cũ (DOS)</span>
           </div>
         </div>
-        <div className="callout warning">
-          <span>Nếu sinh viên nộp file .rar hoặc .7z, hãy yêu cầu họ nén lại thành .zip</span>
+        <div className="callout info">
+          <span>
+            .zip được đọc trực tiếp; các định dạng khác đọc bằng 7-Zip đóng gói sẵn trong app. File .arc / .pak chỉ mở được
+            nếu bên trong thực chất là zip / 7z / rar — nếu không, hãy yêu cầu sinh viên nén lại thành .zip.
+          </span>
+        </div>
+        <div className="callout info">
+          <span>
+            Assignment loại <b>Chấm báo cáo</b> nhận thêm file Word / Excel / PowerPoint nộp thẳng (.doc, .docx, .xls, .xlsx, .ppt, .pptx, .rtf), ví dụ{' '}
+            <code>HoDienCong_23546.docx</code> (hoặc file nén chứa các file đó). .doc và .docx đọc như nhau (app nhận diện theo nội dung file, không theo đuôi). File .pdf
+            chưa đọc được — yêu cầu sinh viên nộp file Office. Assignment chấm code bỏ qua các file này ở folder bài nộp.
+          </span>
         </div>
       </div>
       <div className="divider" />
@@ -394,23 +423,23 @@ function Troubleshooting(): JSX.Element {
         </div>
         <div className="callout error">
           <div className="col gap-4">
-            <strong>Vấn đề: File ZIP bị từ chối</strong>
+            <strong>Vấn đề: File nén bị từ chối</strong>
             <div className="meta">
               <strong>Nguyên nhân:</strong>
               <br />
-              • File không phải .zip
+              • Định dạng không đọc được (vd. .arc / .pak kiểu cũ) hoặc máy thiếu 7-Zip
               <br />
-              • File ZIP có mật khẩu
+              • File nén có mật khẩu
               <br />
-              • File ZIP bị hỏng
+              • File nén bị hỏng
               <br />
-              • File ZIP có dung lượng quá lớn
+              • File nén có dung lượng quá lớn
               <br />
               <strong>Giải pháp:</strong>
               <br />
               • Yêu cầu sinh viên nộp lại file .zip đúng định dạng
               <br />
-              • Kiểm tra file ZIP có thể mở được không
+              • Kiểm tra file nén có thể mở được không
               <br />
               • Tăng giới hạn giải nén trong Cài đặt → Chung nếu file quá lớn
             </div>

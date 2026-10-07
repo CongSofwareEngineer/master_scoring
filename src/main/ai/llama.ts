@@ -7,6 +7,7 @@ import { mkdir, rm } from 'fs/promises'
 import net from 'net'
 import os from 'os'
 import { join } from 'path'
+import { effectiveContext } from '@shared/constants'
 import type { LocalState } from '@shared/types'
 import { emit } from '../events'
 import { getHardware } from '../hardware'
@@ -186,7 +187,7 @@ async function launch(modelId: string, variant: Variant, gpuLayers: number): Pro
   const exe = (await findServer(variant)) ?? (await downloadRuntime(variant, (m) => emit('ai:runtime-progress', m)))
   const s = getSettings(null)
   port = await freePort()
-  const args = ['-m', modelPath(modelId), '--host', '127.0.0.1', '--port', String(port), '-c', String(s.contextSize), '-np', '1']
+  const args = ['-m', modelPath(modelId), '--host', '127.0.0.1', '--port', String(port), '-c', String(effectiveContext('local', s.contextSize)), '-np', '1']
   const threads = s.threads > 0 ? s.threads : Math.max(1, Math.min(8, os.cpus().length - 1))
   args.push('-t', String(threads))
   args.push('-ngl', String(gpuLayers))

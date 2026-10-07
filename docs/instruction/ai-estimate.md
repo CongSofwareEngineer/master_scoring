@@ -25,6 +25,8 @@
     heuristic và LLM lệch > 40% → hạ 1 bậc.
   - Kết quả: `aiPercent`, `studentPercent`, `starterPercent`, `confidence`, % theo file, danh sách đoạn kèm lý do.
   - `levelFromEstimate`: ≥ 60% → high, ≥ 30% → medium; độ tin cậy thấp không xếp high.
+- **Báo cáo .docx (`estimateAiText`):** không dùng heuristic code; % = `ai_percent` của AI chấm bài, độ tin cậy luôn
+  `low` → chế độ tự trừ mặc định (≥ Trung bình) chỉ đề xuất. Xem [report-grading.md](report-grading.md).
 - **Chính sách (`AiPolicy` theo assignment):** `penaltyMode` ∈ `off | suggest | auto`, `tiers` (mặc định
   40% → −1, 60% → −2, 80% → −4), `minConfidence` (mặc định `medium`).
 - **`evaluatePenalty`:** chọn bậc cao nhất ≤ % AI. `auto` chỉ tự áp khi độ tin cậy ≥ `minConfidence`; `suggest` chỉ đề

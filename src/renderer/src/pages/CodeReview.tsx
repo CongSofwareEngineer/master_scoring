@@ -23,7 +23,7 @@ import {
   Unlock,
   X
 } from 'lucide-react'
-import { CONFIDENCE_LABEL, SOURCE_LABEL } from '@shared/constants'
+import { CONFIDENCE_LABEL, sourceLabel } from '@shared/constants'
 import type { AiPenaltyMode, AiQuestions, FileNode, Issue, StudentResult, StudentRow } from '@shared/types'
 import { call, on } from '../lib/api'
 import { cls, fmtScore, fmtTime } from '../lib/format'
@@ -581,7 +581,7 @@ function ResultPanel(props: {
                   </div>
                   <div className="row gap-4 mt-8">
                     <span className={'tag ' + (c.source === 'ai' ? 'tag-AI' : c.source === 'compile' ? 'tag-Compile' : c.source === 'test' ? 'tag-Test' : 'tag-Static')}>
-                      {SOURCE_LABEL[c.source]}
+                      {sourceLabel(c.source, r.auto.report ? 'report' : 'code')}
                     </span>
                     {overridden && <span className="meta locked">Giáo viên đã sửa (AI: {fmtScore(c.score)})</span>}
                   </div>
@@ -717,7 +717,39 @@ function ResultPanel(props: {
                 ))}
               </div>
             )}
-            {!r.auto.compile && !r.auto.tests && <div className="meta">Không có kiểm tra tự động.</div>}
+            {r.auto.report && (
+              <div className="col gap-8">
+                <div className="row gap-4">
+                  <span className="tag tag-Static">[Kiểm tra hình thức]</span>
+                  <span>
+                    {r.auto.report.words} từ · Tài liệu tham khảo: {r.auto.report.hasReferences ? 'có' : 'không tìm thấy'}
+                  </span>
+                </div>
+                {r.auto.report.missingSections.length > 0 && <div className="warning">Thiếu mục: {r.auto.report.missingSections.join(', ')}</div>}
+                {r.auto.report.docs.map((d) => (
+                  <details key={d.file} className="choice-card" style={{ padding: 10 }}>
+                    <summary className="row" style={{ cursor: 'pointer' }}>
+                      <span className="mono truncate">{d.file}</span>
+                      <span className="meta">
+                        {d.words} từ{d.pages ? ` · ${d.pages} trang` : ''} · {d.headings.length} tiêu đề · {d.tables} bảng · {d.images} hình
+                      </span>
+                    </summary>
+                    {d.headings.length > 0 ? (
+                      <div className="col gap-4 mt-8">
+                        {d.headings.map((h, i) => (
+                          <a key={i} style={{ paddingLeft: (h.level - 1) * 14 }} onClick={() => props.onOpenLoc(d.file, h.line)}>
+                            {h.text}
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="meta mt-8">Không có tiêu đề dùng style Heading.</div>
+                    )}
+                  </details>
+                ))}
+              </div>
+            )}
+            {!r.auto.compile && !r.auto.tests && !r.auto.report && <div className="meta">Không có kiểm tra tự động.</div>}
           </div>
         )}
         {props.tab === 'ai' && (

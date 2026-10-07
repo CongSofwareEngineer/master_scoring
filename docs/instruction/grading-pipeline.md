@@ -21,7 +21,8 @@
    - `backendFor(a)`: Cloud cần `cloudConsent`; Local cần llama-server `ready`.
    - Cloud + `anonymizeCloud`: thay họ tên / MSSV (có dấu, không dấu, viết liền, gạch dưới) bằng `SV-xxxxxx` trong code,
      đường dẫn và mô tả đề; khôi phục đường dẫn gốc sau khi nhận kết quả.
-   - Ngân sách token = context (Local: `contextSize`; Cloud: 120k) − 1800 output − prompt. File sắp theo mức quan trọng
+   - Ngân sách token = context (`effectiveContext`: Local = min(`contextSize`, 32K); Cloud = `contextSize`, mặc định
+     32K, tối đa 200K) − 1800 output − prompt. File sắp theo mức quan trọng
      (`importance` theo profile). Vượt ngân sách → tóm tắt từng file (≤ 300 token) rồi thêm toàn văn file quan trọng
      còn vừa.
    - Prompt yêu cầu JSON theo `gradingSchema` (criteria + evidence file/dòng, issues, summary, aiSignal, aiHint), viết
@@ -36,6 +37,10 @@
 9. **Lưu:** status `completed` (giữ `reviewed` nếu đã duyệt), backend (`Local` / `Cloud` / `Tự động`), model, criteria,
    issues, summary, auto, cảnh báo, profile nhận diện, thời gian chấm.
 
+- **Assignment báo cáo (`kind = 'report'`):** bước 1 đọc .docx thành văn bản (`REPORT_PROFILE`), bước 2 là kiểm tra
+  hình thức (`checkReport`, tiêu chí `static` chấm bằng `reportFormatScore`), không compile/test; bước 4 dùng prompt
+  báo cáo + `prepareReportContext` (tóm tắt từng đoạn); bước 6 dùng `estimateAiText`, không tạo câu hỏi vấn đáp — chi
+  tiết ở [report-grading.md](report-grading.md).
 - Huỷ / tạm dừng (`signal.aborted`) → bài về `pending` và ném lỗi cho hàng đợi; lỗi khác → `failed` + `error`.
 - Luôn xoá thư mục làm việc `w/<studentId>` sau khi chấm.
 

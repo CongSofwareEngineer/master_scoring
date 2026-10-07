@@ -23,6 +23,9 @@
   - Timeout: Local 20 phút, Cloud 3 phút. Lỗi HTTP được phân loại (`auth`, `quota`, `model`, `server`…) với thông báo
     tiếng Việt dễ hiểu.
   - Cloud đi qua `netFetch` (ghi nhật ký mạng).
+- **Context:** ngân sách prompt của Cloud = `contextSize` trong AI Models (mặc định 32K, chọn được 100K / 150K / 200K —
+  `effectiveContext('cloud', …)`), không còn cố định 120K. Chọn ≤ giới hạn context của model (vd gpt-4o-mini 128K),
+  vượt → nhà cung cấp báo lỗi.
 - **Test kết nối:** gửi "Reply with the single word: OK".
 - **Quyền riêng tư:** assignment Cloud bắt buộc tick đồng ý gửi code ra ngoài (`cloudConsent`); `anonymizeCloud` (mặc
   định bật) ẩn họ tên / MSSV trước khi gửi (xem `grading-pipeline.md`).

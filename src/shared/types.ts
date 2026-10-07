@@ -44,10 +44,23 @@ export interface AiPolicy {
   minConfidence: AiConfidence // chỉ trừ khi độ tin cậy ước lượng đạt mức này
 }
 
+// Loại bài: chấm code (Tech Profile, compile/test...) hoặc chấm báo cáo / bài viết Word / Excel / PowerPoint.
+export type AssignmentKind = 'code' | 'report'
+
+// Kiểm tra hình thức báo cáo (tiêu chí nguồn "static" của assignment loại report).
+export interface ReportCheck {
+  minWords: number // 0 = không kiểm tra
+  maxWords: number // 0 = không giới hạn
+  requiredSections: string[] // tên mục bắt buộc (khớp heading / dòng, không phân biệt hoa thường, dấu)
+  requireReferences: boolean // bắt buộc có mục Tài liệu tham khảo
+}
+
 export interface Assignment {
   id: number
   name: string
   className: string
+  kind: AssignmentKind
+  reportCheck: ReportCheck
   profileId: string
   description: string
   passThreshold: number
@@ -179,10 +192,29 @@ export interface TestRunResult {
   error?: string
 }
 
+// Thống kê 1 file báo cáo (Word / Excel / PowerPoint) đọc được. Excel: heading = sheet; PowerPoint: heading = slide, pages = số slide.
+export interface DocStats {
+  file: string
+  words: number
+  paragraphs: number
+  headings: { level: number; text: string; line: number }[]
+  tables: number
+  images: number
+  pages: number | null // số trang Word ghi trong docProps/app.xml (có thể không có)
+}
+
+export interface ReportStats {
+  docs: DocStats[]
+  words: number
+  missingSections: string[]
+  hasReferences: boolean
+}
+
 export interface AutoResult {
   compile?: { attempted: boolean; ok: boolean; output: string; command: string; skippedReason?: string }
   tests?: TestRunResult[]
   stats?: { files: number; lines: number; commentLines: number }
+  report?: ReportStats
 }
 
 export interface StudentRow {

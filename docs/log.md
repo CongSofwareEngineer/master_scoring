@@ -32,6 +32,7 @@ Quy tắc: xem [../CLAUDE.md](../CLAUDE.md).
 | Logic | Instruction | Changelog |
 | --- | --- | --- |
 | Pipeline chấm 1 sinh viên | [instruction/grading-pipeline.md](instruction/grading-pipeline.md) | [changelog/grading-pipeline.md](changelog/grading-pipeline.md) |
+| Chấm báo cáo (Word / Excel / PowerPoint) | [instruction/report-grading.md](instruction/report-grading.md) | [changelog/report-grading.md](changelog/report-grading.md) |
 | Hàng đợi chấm | [instruction/grading-queue.md](instruction/grading-queue.md) | [changelog/grading-queue.md](changelog/grading-queue.md) |
 | Phân tích tĩnh | [instruction/static-analysis.md](instruction/static-analysis.md) | [changelog/static-analysis.md](changelog/static-analysis.md) |
 | Biên dịch & chạy test C/C++ | [instruction/cpp-compile-test.md](instruction/cpp-compile-test.md) | [changelog/cpp-compile-test.md](changelog/cpp-compile-test.md) |

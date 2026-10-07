@@ -14,6 +14,10 @@
 - Một số key nội bộ cũng nằm trong bảng `settings` nhưng không thuộc `AppSettings`: `queueState` (user 0),
   `cloudConfig` (theo user).
 - Trang Settings có các tab: Chung, Tài khoản, Dữ liệu, Kết nối mạng, Giới thiệu.
+- **`contextSize`** (theo máy, chọn ở AI Models): mặc định **32K** (`DEFAULT_CONTEXT`), lựa chọn `CONTEXT_OPTIONS` = 8K,
+  16K, 32K, 100K, 150K, 200K. Dùng cho cả Cloud AI (đúng giá trị chọn) và Local AI (tối đa 32K) qua
+  `effectiveContext(kind, contextSize)` trong `src/shared/constants.ts`. Máy đã lưu giá trị cũ giữ nguyên giá trị đó
+  (option lạ vẫn hiện trong danh sách).
 - Các nhóm cài đặt chính: ngôn ngữ; Local AI (`contextSize`, `llamaVariant`, `gpuLayers`, `threads`, `modelsDir`,
   `activeModelId`); `preventSleep`; giới hạn giải nén (`maxUnzipMb`, `maxFiles`); trùng lặp (`similarityEnabled`
   mặc định tắt, `similarityThreshold` 30–100); câu hỏi vấn đáp (`aiQuestionsEnabled` mặc định tắt,

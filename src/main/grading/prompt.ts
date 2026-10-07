@@ -7,14 +7,16 @@ export function estimateTokens(s: string): number {
   return Math.ceil(s.length / 3.2)
 }
 
-export function numbered(text: string): string {
+// start: số dòng của dòng đầu tiên (đoạn trích giữa file báo cáo vẫn giữ đúng số dòng gốc).
+export function numbered(text: string, start = 1): string {
   const lines = text.replace(/\r\n?/g, '\n').split('\n')
-  const w = String(lines.length).length
-  return lines.map((l, i) => `${String(i + 1).padStart(w, ' ')}| ${l}`).join('\n')
+  const w = String(lines.length + start - 1).length
+  return lines.map((l, i) => `${String(i + start).padStart(w, ' ')}| ${l}`).join('\n')
 }
 
-export function fileBlock(path: string, text: string): string {
-  return `=== FILE: ${path} ===\n${numbered(text)}\n`
+export function fileBlock(path: string, text: string, start = 1): string {
+  const n = text.split('\n').length
+  return `=== FILE: ${path}${start > 1 ? ` (dòng ${start}–${start + n - 1})` : ''} ===\n${numbered(text, start)}\n`
 }
 
 export function gradingSchema(criteria: Criterion[]): object {
@@ -113,8 +115,34 @@ Quy tắc:
   + segments: tối đa 8 đoạn code (file, line_start, line_end) bạn KHÁ CHẮC về nguồn gốc: origin "ai" (văn phong AI) hoặc "student" (dấu hiệu gõ tay: viết dính, format lệch, tên biến tiếng Việt, code bị comment lại, lỗi vặt). Không chắc thì để mảng rỗng.
 - Chỉ trả về MỘT đối tượng JSON đúng schema, không thêm chữ nào khác.`
 
+// Chấm báo cáo / bài viết (Word / Excel / PowerPoint)
+const reportSystem = (lang: Lang): string => `Bạn là giảng viên chấm báo cáo / bài viết cuối kỳ của sinh viên đại học, chấm công bằng, khách quan và nhất quán.
+Quy tắc:
+- Chỉ chấm các tiêu chí được liệt kê, mỗi tiêu chí cho điểm từ 0 đến điểm tối đa (bội số của 0.25).
+- ${LANG_RULE[lang]}
+- Văn bản được trích từ file Word / Excel / PowerPoint: dòng bắt đầu bằng "#" là tiêu đề chương / mục (Excel: "# Sheet: <tên>", PowerPoint: "# Slide N: <tiêu đề>"), dòng dạng "| ... |" là một hàng của bảng / sheet, "- " là gạch đầu dòng, "> Ghi chú:" là ghi chú thuyết trình của slide.
+- Lý do (reason) ngắn gọn (2-3 câu), cụ thể, dẫn chứng bằng file và số dòng có thật (số dòng ở đầu mỗi dòng văn bản).
+- Đánh giá nội dung so với đề bài: đầy đủ, chính xác, có phân tích, ví dụ, số liệu, lập luận chặt chẽ. KHÔNG cho điểm cao chỉ vì bài dài.
+- Issues: tối đa 8 vấn đề quan trọng nhất (thiếu nội dung đề yêu cầu, sai kiến thức, lập luận yếu, lỗi diễn đạt / chính tả lặp lại, trích dẫn thiếu), có file và dòng.
+- ai_signals: liệt kê DẤU HIỆU CỤ THỂ cho thấy văn bản có thể do AI viết (văn phong chatbot, câu chung chung theo khuôn mẫu, liệt kê đều đặn thiếu ví dụ thực tế, tài liệu tham khảo không có thật...). Không có dấu hiệu rõ ràng thì level = "low" và signals rỗng. Đây chỉ là tín hiệu tham khảo.
+  + ai_percent: ước lượng bao nhiêu % nội dung báo cáo là do AI viết, số nguyên 0-100. Không có dấu hiệu thì gần 0.
+  + segments: tối đa 8 đoạn (file, line_start, line_end) bạn KHÁ CHẮC về nguồn gốc: origin "ai" (văn phong AI) hoặc "student" (văn phong cá nhân, trải nghiệm / ví dụ thực tế của bản thân, lỗi đánh máy). Không chắc thì để mảng rỗng.
+- Chỉ trả về MỘT đối tượng JSON đúng schema, không thêm chữ nào khác.`
+
+function reportAutoSummary(auto: AutoResult): string[] {
+  const r = auto.report
+  if (!r) return []
+  const pages = r.docs.reduce((s, d) => s + (d.pages ?? 0), 0)
+  const parts = [
+    `Hình thức: ${r.docs.length} file, ${r.words} từ${pages ? `, ${pages} trang` : ''}, ${r.docs.reduce((s, d) => s + d.headings.length, 0)} tiêu đề mục, ${r.docs.reduce((s, d) => s + d.tables, 0)} bảng, ${r.docs.reduce((s, d) => s + d.images, 0)} hình`,
+    `Mục Tài liệu tham khảo: ${r.hasReferences ? 'có' : 'không tìm thấy'}`
+  ]
+  if (r.missingSections.length) parts.push(`Thiếu mục bắt buộc: ${r.missingSections.join(', ')}`)
+  return parts
+}
+
 function autoSummary(auto: AutoResult, issues: Issue[]): string {
-  const parts: string[] = []
+  const parts: string[] = [...reportAutoSummary(auto)]
   if (auto.compile) {
     if (!auto.compile.attempted) parts.push(`Biên dịch: không thực hiện (${auto.compile.skippedReason ?? ''})`)
     else parts.push(`Biên dịch: ${auto.compile.ok ? 'THÀNH CÔNG' : 'THẤT BẠI'}`)
@@ -142,6 +170,10 @@ export function buildGradingMessages(
   lang: Lang
 ): ChatMessage[] {
   const crit = criteria.map((c) => `- id="${c.id}" | ${c.name} | tối đa ${c.max} điểm | ${c.description || ''}`).join('\n')
+  const report = a.kind === 'report'
+  const heading = report
+    ? `# Báo cáo của sinh viên (văn bản trích từ file Word)${isSummary ? ' (báo cáo dài: gồm bản tóm tắt từng phần và toàn văn các phần còn vừa)' : ''}`
+    : `# Mã nguồn sinh viên${isSummary ? ' (project lớn: gồm bản tóm tắt từng file và toàn văn các file quan trọng)' : ''}`
   const user = `# Đề bài
 ${a.description?.trim() || '(Giáo viên không cung cấp đề bài — chấm theo tên assignment và tiêu chí)'}
 Tên bài: ${a.name}
@@ -152,14 +184,26 @@ ${crit}
 # Kết quả kiểm tra tự động (khách quan)
 ${autoSummary(auto, issues)}
 
-# Mã nguồn sinh viên${isSummary ? ' (project lớn: gồm bản tóm tắt từng file và toàn văn các file quan trọng)' : ''}
+${heading}
 ${codeBlock}
 
 Trả về JSON với "criteria" gồm đủ ${criteria.length} tiêu chí: ${criteria.map((c) => c.id).join(', ')}.
 ${LANG_RULE[lang]}`
   return [
-    { role: 'system', content: system(lang) },
+    { role: 'system', content: report ? reportSystem(lang) : system(lang) },
     { role: 'user', content: user }
+  ]
+}
+
+// Báo cáo dài: tóm tắt từng đoạn (giữ số dòng gốc qua `start`).
+export function summarizeReportMessages(path: string, text: string, start: number): ChatMessage[] {
+  return [
+    {
+      role: 'system',
+      content:
+        'Bạn tóm tắt một phần báo cáo của sinh viên cho người chấm. Viết tiếng Việt, tối đa 150 từ, dạng gạch đầu dòng: các mục / ý chính, luận điểm, số liệu và dẫn chứng (kèm số dòng), chỗ sai kiến thức hoặc bất thường.'
+    },
+    { role: 'user', content: fileBlock(path, text, start) }
   ]
 }
 

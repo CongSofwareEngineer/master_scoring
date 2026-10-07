@@ -2,27 +2,30 @@
 // 1. Giải nén (lọc theo profile)  2. Nhận diện công nghệ (profile "Tự động nhận diện")  3. Compile / test / phân tích tĩnh
 // 4. Chuẩn bị ngữ cảnh AI (project lớn → tóm tắt từng file)  5. AI chấm → JSON
 // 6. Ước lượng % code AI + điểm trừ theo chính sách (+ câu hỏi vấn đáp nếu bật)  7. Ghép điểm  8. Fingerprint cho Integrity  9. Lưu kết quả
+// Assignment báo cáo (Word / Excel / PowerPoint): bước 1 đọc file Office thành văn bản, bước 3 là kiểm tra hình thức, bước 5 dùng prompt chấm
+// báo cáo (báo cáo dài → tóm tắt từng đoạn), bước 6 chỉ lấy nhận định của AI (không heuristic code, không câu hỏi vấn đáp).
 import { createHash } from 'crypto'
 import { evaluatePenalty } from '@shared/aiPolicy'
 import { rm } from 'fs/promises'
 import { join } from 'path'
-import { AUTO_PROFILE_ID, SOURCE_LABEL } from '@shared/constants'
+import { AUTO_PROFILE_ID, effectiveContext, SOURCE_LABEL } from '@shared/constants'
 import type { AiEstimate, AiQuestions, AiSignal, Assignment, AutoResult, Criterion, CriterionResult, Issue, StudentRow } from '@shared/types'
 import { chat, cloudBackend, localBackend, type BackendConfig } from '../ai/client'
 import { compileAndTest } from '../analysis/cpp'
-import { loadForGrading } from '../analysis/detect'
+import { gradingProfileId, loadForGrading } from '../analysis/detect'
+import { checkReport, reportFormatScore } from '../analysis/report'
 import { runProcess } from '../analysis/runner'
 import { runStatic, staticScore } from '../analysis/static'
 import { nowIso } from '../db'
 import { decodeText, writeFilesTo, SubmissionError } from '../importer/extract'
-import { estimateAiCode, levelFromEstimate, type LlmAiHint } from '../integrity/aiEstimate'
+import { estimateAiCode, estimateAiText, levelFromEstimate, type LlmAiHint } from '../integrity/aiEstimate'
 import { fingerprintFiles } from '../integrity/fingerprint'
 import { generateQuestions } from '../integrity/questions'
 import { starterKgrams } from '../integrity/starter'
 import { paths } from '../paths'
 import { assignmentOwner, computeTotal, getAssignment, getResult, getStudent, listProfiles, setStatus, updateResult } from '../repo'
 import { getSettings } from '../settings'
-import { buildGradingMessages, estimateTokens, extractJson, fileBlock, gradingSchema, summarizeMessages, validateAi } from './prompt'
+import { buildGradingMessages, estimateTokens, extractJson, fileBlock, gradingSchema, summarizeMessages, summarizeReportMessages, validateAi } from './prompt'
 
 export type StepCallback = (step: string) => void
 
@@ -112,11 +115,12 @@ async function buildQuestions(
 export async function regenerateQuestions(studentId: number): Promise<AiQuestions> {
   const student = getStudent(studentId)
   const a = getAssignment(student.assignmentId)
+  if (a.kind === 'report') throw new Error('Câu hỏi vấn đáp chỉ áp dụng cho assignment chấm code')
   const est = getResult(studentId).aiSignal?.estimate
   if (!est) throw new Error('Bài chưa có ước lượng % code AI — hãy chấm lại')
   const owner = assignmentOwner(a.id) ?? 0
   const settings = getSettings(null)
-  const { sub } = await loadForGrading(student.zipPath, listProfiles(owner), a.profileId, { maxBytes: settings.maxUnzipMb * 1048576, maxFiles: settings.maxFiles })
+  const { sub } = await loadForGrading(student.zipPath, listProfiles(owner), gradingProfileId(a), { maxBytes: settings.maxUnzipMb * 1048576, maxFiles: settings.maxFiles })
   const q = await buildQuestions(student, a, sub.files, est, backendFor(a))
   updateResult(studentId, { ai_questions: q })
   return q
@@ -168,6 +172,65 @@ async function prepareContext(
   return { block, summarized: true }
 }
 
+// Báo cáo dài vượt ngân sách: chia mỗi file thành các đoạn liền nhau theo dòng, tóm tắt từng đoạn (giữ số dòng gốc),
+// rồi thêm toàn văn các đoạn đầu còn vừa ngân sách.
+async function prepareReportContext(
+  files: Map<string, string>,
+  backend: BackendConfig,
+  budgetTokens: number,
+  signal: AbortSignal,
+  onStep: StepCallback
+): Promise<{ block: string; summarized: boolean }> {
+  const full = [...files].map(([p, t]) => fileBlock(p, t)).join('\n')
+  if (estimateTokens(full) <= budgetTokens) return { block: full, summarized: false }
+
+  const chunkTokens = Math.max(1500, Math.floor(budgetTokens * 0.5))
+  const chunks: { path: string; start: number; text: string }[] = []
+  for (const [path, text] of files) {
+    const lines = text.split('\n')
+    let start = 0
+    while (start < lines.length) {
+      let end = start
+      let used = 0
+      while (end < lines.length) {
+        const t = estimateTokens(lines[end]) + 2
+        if (used + t > chunkTokens && end > start) break
+        used += t
+        end++
+      }
+      chunks.push({ path, start: start + 1, text: lines.slice(start, end).join('\n') })
+      start = end
+    }
+  }
+  const summaries: string[] = []
+  let i = 0
+  for (const c of chunks) {
+    i++
+    if (signal.aborted) throw new Error('Đã huỷ')
+    const n = c.text.split('\n').length
+    onStep(`Tóm tắt đoạn ${i}/${chunks.length}: ${c.path} (dòng ${c.start}–${c.start + n - 1})`)
+    let text = c.text
+    if (estimateTokens(text) > chunkTokens * 1.2) text = text.slice(0, Math.floor(chunkTokens * 3.2))
+    try {
+      const sum = await chat(backend, summarizeReportMessages(c.path, text, c.start), { maxTokens: 400, signal })
+      summaries.push(`--- TÓM TẮT: ${c.path} (dòng ${c.start}–${c.start + n - 1}) ---\n${sum.trim()}`)
+    } catch (e: any) {
+      if (signal.aborted) throw e
+      summaries.push(`--- TÓM TẮT: ${c.path} (dòng ${c.start}–${c.start + n - 1}) --- (không tóm tắt được: ${e.message})`)
+    }
+  }
+  let block = summaries.join('\n\n') + '\n\n'
+  let used = estimateTokens(block)
+  for (const c of chunks) {
+    const b = fileBlock(c.path, c.text, c.start)
+    const t = estimateTokens(b)
+    if (used + t > budgetTokens) break
+    block += b + '\n'
+    used += t
+  }
+  return { block, summarized: true }
+}
+
 async function aiGrade(
   a: Assignment,
   aiCriteria: Criterion[],
@@ -182,11 +245,12 @@ async function aiGrade(
   const s = getSettings(null)
   // Ngôn ngữ là cài đặt riêng từng giáo viên → lấy của chủ assignment, không phải cài đặt chung của máy
   const lang = getSettings(assignmentOwner(a.id) ?? null).lang
-  const ctx = backend.kind === 'local' ? s.contextSize : 120_000
+  const ctx = effectiveContext(backend.kind, s.contextSize)
   const outputReserve = 1800
   const base = estimateTokens(buildGradingMessages(a, aiCriteria, auto, issues, '', false, lang).map((m) => m.content).join('\n'))
   const budget = Math.max(800, ctx - outputReserve - base - 200)
-  const { block, summarized } = await prepareContext(files, profileId, backend, budget, signal, onStep)
+  const { block, summarized } =
+    a.kind === 'report' ? await prepareReportContext(files, backend, budget, signal, onStep) : await prepareContext(files, profileId, backend, budget, signal, onStep)
   const fileLines = new Map<string, number>()
   for (const [p, t] of files) fileLines.set(p, t.split('\n').length)
   const messages = buildGradingMessages(a, aiCriteria, auto, issues, block, summarized, lang)
@@ -265,23 +329,33 @@ export async function gradeStudent(
     setStatus(student.id, 'extracting')
     onStep('Giải nén & lọc file')
     // + 2. Nhận diện công nghệ (chỉ khi assignment chọn "Tự động nhận diện")
-    const { sub, profile, detected } = await loadForGrading(student.zipPath, profiles, a.profileId, {
+    const report = a.kind === 'report'
+    const { sub, profile, detected } = await loadForGrading(student.zipPath, profiles, gradingProfileId(a), {
       maxBytes: settings.maxUnzipMb * 1048576,
       maxFiles: settings.maxFiles
     })
     warnings.push(...sub.warnings.slice(0, 30))
-    if (!sub.files.size) throw new SubmissionError('Không tìm thấy mã nguồn')
+    if (!sub.files.size) throw new SubmissionError(report ? 'Không tìm thấy file báo cáo Word / Excel / PowerPoint đọc được' : 'Không tìm thấy mã nguồn')
     if (profile.id === AUTO_PROFILE_ID) warnings.unshift('Không nhận diện được công nghệ của bài nộp — chấm theo tiêu chí chung')
 
     // 3. Kiểm tra tự động
     if (signal.aborted) throw new Error('Đã huỷ')
     onStatus('analyzing')
     setStatus(student.id, 'analyzing')
-    onStep('Phân tích tĩnh')
-    const st = runStatic(profile.id, sub.files)
-    const issues: Issue[] = [...st.issues]
-    const auto: AutoResult = { stats: st.stats }
-    const needsCompile = a.rubric.some((c) => c.source === 'compile' || c.source === 'test')
+    const issues: Issue[] = []
+    const auto: AutoResult = {}
+    const needsCompile = !report && a.rubric.some((c) => c.source === 'compile' || c.source === 'test')
+    if (report) {
+      onStep('Kiểm tra hình thức báo cáo')
+      const rc = checkReport(sub.files, sub.docs, a.reportCheck)
+      issues.push(...rc.issues)
+      auto.report = rc.report
+    } else {
+      onStep('Phân tích tĩnh')
+      const st = runStatic(profile.id, sub.files)
+      issues.push(...st.issues)
+      auto.stats = st.stats
+    }
     if ((profile.id === 'c' || profile.id === 'cpp') && needsCompile && profile.buildEnabled) {
       onStep('Biên dịch & chạy test case')
       const r = await compileAndTest(profile.id === 'c' ? 'c' : 'cpp', sub.files, a, workDir, signal)
@@ -323,7 +397,7 @@ export async function gradeStudent(
           base.reason = `Đạt ${passed}/${auto.tests.length} test case.`
         } else base.reason = a.testCases.length ? 'Không chạy được test case — giáo viên chấm tay.' : 'Assignment chưa có test case — giáo viên chấm tay.'
       } else if (c.source === 'static') {
-        const r = staticScore(c.max, issues)
+        const r = report ? reportFormatScore(c.max, issues) : staticScore(c.max, issues)
         base.score = r.score
         base.reason = r.reason
       } else if (c.source === 'teacher') {
@@ -380,15 +454,16 @@ export async function gradeStudent(
     }
 
     // 6. Ước lượng % code do AI viết (phong cách từng đoạn + nhận định LLM, bỏ code khung) và điểm trừ
-    onStep('Ước lượng % code do AI viết')
-    const starter = await starterKgrams(a.id).catch(() => new Set<number>())
-    const estimate = estimateAiCode(sub.files, profile.id,{ starter, llm: aiHint })
+    onStep(report ? 'Ước lượng % văn bản do AI viết' : 'Ước lượng % code do AI viết')
+    const estimate = report
+      ? estimateAiText(sub.files, aiHint)
+      : estimateAiCode(sub.files, profile.id, { starter: await starterKgrams(a.id).catch(() => new Set<number>()), llm: aiHint })
     aiSignal = { level: levelFromEstimate(estimate), signals: aiSignal?.signals ?? [], estimate }
     const penalty = evaluatePenalty(a.aiPolicy, estimate, prev.aiPenalty)
 
     // 6b. Bài % code AI cao → AI đề xuất câu hỏi vấn đáp (tuỳ chọn, mặc định tắt). Lỗi ở bước này không làm hỏng kết quả chấm.
     let aiQuestions: AiQuestions | null = prev.aiQuestions
-    if (settings.aiQuestionsEnabled && estimate.aiPercent >= settings.aiQuestionsMinPercent) {
+    if (!report && settings.aiQuestionsEnabled && estimate.aiPercent >= settings.aiQuestionsMinPercent) {
       if (signal.aborted) throw new Error('Đã huỷ')
       onStep('AI đề xuất câu hỏi vấn đáp')
       try {

@@ -633,3 +633,34 @@ export function levelFromEstimate(e: AiEstimate): 'low' | 'medium' | 'high' {
   const lv = e.aiPercent >= 60 ? 'high' : e.aiPercent >= 30 ? 'medium' : 'low'
   return lv === 'high' && e.confidence === 'low' ? 'medium' : lv
 }
+
+// Báo cáo (Word / Excel / PowerPoint): heuristic phong cách code không áp dụng cho văn xuôi → chỉ dựa vào nhận định của AI chấm bài.
+// Độ tin cậy luôn "Thấp" (phát hiện văn bản AI rất dễ sai) → chính sách mặc định chỉ đề xuất trừ, không tự trừ.
+export function estimateAiText(files: Map<string, Buffer>, llm: LlmAiHint | null): AiEstimate {
+  const lineCount = new Map<string, number>()
+  for (const [path, buf] of files) lineCount.set(path, decodeText(buf).split('\n').filter((l) => l.trim()).length)
+  const totalLines = [...lineCount.values()].reduce((a, n) => a + n, 0)
+  const pct = llm?.percent !== null && llm?.percent !== undefined && Number.isFinite(llm.percent) ? Math.round(Math.max(0, Math.min(100, llm.percent))) : null
+  const ai = totalLines > 0 ? pct ?? 0 : 0
+  const segments: AiSegment[] = (llm?.segments ?? []).map((g) => ({
+    file: g.file,
+    lineStart: g.lineStart,
+    lineEnd: g.lineEnd,
+    lines: g.lineEnd - g.lineStart + 1,
+    aiProb: g.origin === 'ai' ? 0.8 : 0.2,
+    origin: g.origin,
+    reasons: [g.origin === 'ai' ? 'AI chấm bài nhận định đoạn này do AI viết' : 'AI chấm bài nhận định đoạn này do SV tự viết']
+  }))
+  return {
+    aiPercent: ai,
+    studentPercent: totalLines > 0 ? 100 - ai : 0,
+    starterPercent: 0,
+    confidence: 'low',
+    totalLines,
+    authoredLines: totalLines,
+    heuristicPercent: 0,
+    llmPercent: pct,
+    files: [...lineCount.entries()].map(([file, lines]) => ({ file, lines, starterLines: 0, aiPercent: ai })),
+    segments
+  }
+}

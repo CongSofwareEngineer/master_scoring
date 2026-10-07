@@ -1,4 +1,4 @@
-import type { AiConfidence, AiPolicy, AppSettings, CloudProvider, Criterion, GradeStatus, TechProfile } from './types'
+import type { AiConfidence, AiPolicy, AppSettings, AssignmentKind, CloudProvider, Criterion, CriterionSource, GradeStatus, ReportCheck, TechProfile } from './types'
 
 export const APP_NAME = 'Master Scoring'
 
@@ -56,10 +56,21 @@ export const CLOUD_PROVIDERS: Record<CloudProvider, { name: string; baseUrl: str
   }
 }
 
+// Context (token) chọn trong AI Models. Cloud AI dùng đúng giá trị chọn; Local AI tối đa LOCAL_MAX_CONTEXT
+// (context huấn luyện của Qwen2.5-Coder — lớn hơn chỉ tốn RAM mà model không đọc tốt hơn).
+export const CONTEXT_OPTIONS = [8192, 16384, 32768, 102400, 153600, 204800]
+export const DEFAULT_CONTEXT = 32768
+export const LOCAL_MAX_CONTEXT = 32768
+
+export function effectiveContext(kind: 'local' | 'cloud', contextSize: number): number {
+  const n = Number(contextSize) > 0 ? Number(contextSize) : DEFAULT_CONTEXT
+  return kind === 'local' ? Math.min(n, LOCAL_MAX_CONTEXT) : n
+}
+
 export const DEFAULT_SETTINGS: AppSettings = {
   lang: 'vi',
   mssvPattern: '^\\d{4,20}$',
-  contextSize: 8192,
+  contextSize: DEFAULT_CONTEXT,
   llamaVariant: 'auto',
   gpuLayers: -1,
   threads: 0,
@@ -359,6 +370,49 @@ export const SOURCE_LABEL: Record<Criterion['source'], string> = {
   static: 'Tự động · Phân tích tĩnh',
   ai: 'AI',
   teacher: 'Giáo viên'
+}
+
+// ───────────── Chấm báo cáo (Word / Excel / PowerPoint) ─────────────
+
+// Profile nội bộ cho assignment loại "report" — không nằm trong BUILTIN_PROFILES (không hiện ở Tech Profiles,
+// không tham gia nhận diện công nghệ).
+export const REPORT_PROFILE_ID = 'report'
+export const REPORT_PROFILE: TechProfile = {
+  id: REPORT_PROFILE_ID,
+  name: 'Báo cáo (Word / Excel / PowerPoint)',
+  builtin: true,
+  detect: [],
+  ignore: ['~$*'], // file khoá tạm của Word / Excel / PowerPoint
+  extensions: ['.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt', '.rtf'],
+  checks: 'Đọc văn bản Word / Excel / PowerPoint, kiểm tra số từ, mục bắt buộc, tài liệu tham khảo',
+  buildEnabled: false,
+  buildNote: '',
+  rubric: []
+}
+
+export const REPORT_RUBRIC: Criterion[] = [
+  r('format', 'Hình thức & yêu cầu trình bày', 1.5, 'static', 'Đủ số từ, có các mục bắt buộc, có tài liệu tham khảo (kiểm tra tự động).'),
+  r('structure', 'Bố cục & cấu trúc', 1.5, 'ai', 'Bố cục logic: mở đầu, nội dung các chương, kết luận; heading rõ ràng, các phần liên kết.'),
+  r('content', 'Nội dung & đúng yêu cầu đề', 4, 'ai', 'Trình bày đầy đủ, chính xác các nội dung đề yêu cầu; kiến thức đúng, có chiều sâu.'),
+  r('analysis', 'Phân tích, đánh giá & kết luận', 1.5, 'ai', 'Có phân tích, so sánh, đánh giá, ví dụ minh hoạ; kết luận rút ra từ nội dung.'),
+  r('language', 'Ngôn ngữ & diễn đạt', 1, 'ai', 'Câu văn rõ ràng, đúng chính tả, ngữ pháp, dùng thuật ngữ chính xác.'),
+  r('references', 'Trích dẫn tài liệu', 0.5, 'ai', 'Có trích dẫn nguồn trong bài và danh mục tài liệu tham khảo phù hợp.')
+]
+
+export const DEFAULT_REPORT_CHECK: ReportCheck = {
+  minWords: 1500,
+  maxWords: 0,
+  requiredSections: ['Mở đầu', 'Kết luận'],
+  requireReferences: true
+}
+
+// Nguồn chấm dùng được theo loại bài: báo cáo không có compile / test.
+export function sourcesFor(kind: AssignmentKind): CriterionSource[] {
+  return kind === 'report' ? ['static', 'ai', 'teacher'] : (Object.keys(SOURCE_LABEL) as CriterionSource[])
+}
+
+export function sourceLabel(source: CriterionSource, kind: AssignmentKind = 'code'): string {
+  return kind === 'report' && source === 'static' ? 'Tự động · Kiểm tra hình thức' : SOURCE_LABEL[source]
 }
 
 export function round2(n: number): number {

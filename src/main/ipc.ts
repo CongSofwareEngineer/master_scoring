@@ -4,6 +4,7 @@ import { existsSync } from 'fs'
 import { evaluatePenalty, normalizePolicy } from '@shared/aiPolicy'
 import { round2 } from '@shared/constants'
 import { translate } from '@shared/i18n'
+import { REPORT_EXTS, SUPPORTED_EXTS } from '@shared/submissionName'
 import type { Assignment, CloudProvider, Criterion, Lang, TechProfile } from '@shared/types'
 import { cloudBackend, getCloudConfig, saveCloudConfig, testConnection } from './ai/client'
 import { aiStatus, ensureLocalStarted, installAndUse, pauseModelDownload, restartLocal, switchModel } from './ai/manager'
@@ -171,8 +172,11 @@ export function registerIpc(): void {
     const u = requireUser()
     if (data.rubric) data.rubric = data.rubric.map((c) => ({ ...c, max: round2(Number(c.max) || 0) }))
     if (data.aiPolicy) data.aiPolicy = normalizePolicy(data.aiPolicy)
-    const before = data.id ? JSON.stringify(getAssignment(data.id, u.id).aiPolicy) : null
+    const prev = data.id ? getAssignment(data.id, u.id) : null
+    const before = prev ? JSON.stringify(prev.aiPolicy) : null
     const saved = saveAssignment(u.id, data)
+    // Đổi loại bài (code ↔ báo cáo) → cách đọc bài nộp đổi, bỏ cache Code Review
+    if (prev && prev.kind !== saved.kind) invalidateReview()
     if (before !== null && before !== JSON.stringify(saved.aiPolicy)) {
       recomputePenalties(saved.id)
       emit('students:changed', { assignmentId: saved.id })
@@ -183,7 +187,7 @@ export function registerIpc(): void {
   handle('assign:pickFolder', async (id: number) => {
     const a = ownAssignment(id)
     const r = await dialog.showOpenDialog(win()!, {
-      title: 'Chọn folder chứa file zip bài nộp',
+      title: 'Chọn folder chứa file nén bài nộp',
       defaultPath: a.submissionsDir || undefined,
       properties: ['openDirectory']
     })
@@ -191,11 +195,12 @@ export function registerIpc(): void {
     return saveAssignment(requireUser().id, { id, submissionsDir: r.filePaths[0] })
   })
   handle('assign:pickStarter', async (id: number, kind: 'folder' | 'zip') => {
-    ownAssignment(id)
+    const a = ownAssignment(id)
+    const exts = a.kind === 'report' ? [...REPORT_EXTS, ...SUPPORTED_EXTS] : SUPPORTED_EXTS
     const r = await dialog.showOpenDialog(win()!, {
-      title: 'Chọn code khung (starter code)',
+      title: a.kind === 'report' ? 'Chọn mẫu báo cáo giáo viên phát' : 'Chọn code khung (starter code)',
       properties: kind === 'folder' ? ['openDirectory'] : ['openFile'],
-      filters: kind === 'zip' ? [{ name: 'Zip', extensions: ['zip'] }] : undefined
+      filters: kind === 'zip' ? [{ name: a.kind === 'report' ? 'File Word / Excel / PowerPoint / file nén' : 'File nén', extensions: exts.map((e) => e.slice(1)) }] : undefined
     })
     if (r.canceled || !r.filePaths[0]) return null
     return saveAssignment(requireUser().id, { id, starterDir: r.filePaths[0] })

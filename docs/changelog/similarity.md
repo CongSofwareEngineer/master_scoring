@@ -5,3 +5,4 @@
 - 2026-10-05 | Thêm mới | So sánh trùng lặp: phiên bản đầu tiên (commit "first commit") — khởi tạo dự án
 - 2026-10-05 | Sửa | Code khung: đọc qua `loadForGrading` và dùng `ALWAYS_IGNORE` khi đọc folder — cùng bộ lọc với bài nộp
 - 2026-10-06 | Thêm mới | So sánh trùng lặp (Integrity): tạo tài liệu instruction mô tả hiện trạng — áp dụng quy tắc docs trong CLAUDE.md
+- 2026-10-07 | Sửa | Fingerprint: file `.docx` (báo cáo) tokenize theo từ, k-gram 8 từ; mẫu báo cáo giáo viên phát được loại trừ — so trùng lặp giữa các báo cáo

@@ -1,6 +1,9 @@
 # Master Scoring
 
-Ứng dụng desktop chấm điểm code sinh viên (Java Android, Next.js, C, C++) cho giáo viên.
+Ứng dụng desktop chấm điểm code sinh viên (Java Android, Next.js, C, C++) và **báo cáo / bài viết Word / Excel / PowerPoint (.doc .docx .xls .xlsx .ppt .pptx)** cho giáo viên.
+Mỗi assignment chọn loại bài **Chấm code** hoặc **Chấm báo cáo (Word / Excel / PowerPoint)** — hai loại có bộ filter chấm khác nhau (xem
+[docs/instruction/report-grading.md](docs/instruction/report-grading.md)). Context AI chọn trong AI Models: mặc định 32K,
+tới 200K cho Cloud AI (Local AI tối đa 32K).
 Thiết kế chi tiết: [Master_Scoring_Design.md](Master_Scoring_Design.md).
 
 Công nghệ: **Electron + React + TypeScript** (phương án thay thế trong mục 23 của design — dev được trên macOS/Windows,
@@ -32,6 +35,8 @@ Các lệnh build tự làm:
 2. Tải llama-server (llama.cpp) để đóng gói kèm Local AI — Windows: bản CPU + GPU Vulkan và Visual C++ Redistributable;
    macOS: bản Metal cho từng kiến trúc (`npm run fetch:runtime` / `npm run fetch:runtime:mac`; đã có thì bỏ qua).
    Không tải được thì vẫn build — app tự tải llama-server lần đầu dùng Local AI.
+   Kèm 7-Zip 25.01 (Windows `7z.exe + 7z.dll`, macOS `7zz`) để đọc bài nộp .rar / .7z / .tar.gz / .iso / .dmg / .arj…
+   Thiếu 7-Zip thì app chỉ đọc được .zip (hoặc dùng 7-Zip cài sẵn trên máy).
 3. Build mã nguồn (electron-vite) và đóng gói (electron-builder).
 
 Build Windows chạy được trên cả macOS lẫn Windows. Build macOS cần chạy trên máy Mac.
@@ -56,8 +61,10 @@ Build Windows chạy được trên cả macOS lẫn Windows. Build macOS cần 
 
 ## Dev trên macOS
 
-- Giao diện, đăng nhập, assignment, quét zip, phân tích tĩnh, Integrity, báo cáo… chạy đầy đủ.
+- Giao diện, đăng nhập, assignment, quét bài nộp, phân tích tĩnh, Integrity, báo cáo… chạy đầy đủ.
 - Local AI khi dev trên Mac: chạy `npm run fetch:runtime:mac` (hoặc `brew install llama.cpp`) — app tự tìm llama-server. Apple Silicon chạy model trên GPU qua Metal.
+- Đọc bài nộp ngoài .zip (.rar, .7z, .tar.gz, .iso, .dmg…) khi dev trên Mac: chạy `npm run fetch:runtime:mac`
+  (hoặc `brew install sevenzip`) — app tự tìm 7-Zip.
 - Compile C/C++ khi dev trên Mac dùng `gcc`/`g++` (clang) có sẵn.
 
 ## Dữ liệu
@@ -78,8 +85,8 @@ Build Windows chạy được trên cả macOS lẫn Windows. Build macOS cần 
 src/shared/      kiểu dữ liệu + hằng số dùng chung (model, profile, rubric mẫu)
 src/main/        Electron main process
   ai/            llama-server sidecar, tải model (resume + SHA-256), client OpenAI-compatible (Local/Cloud)
-  importer/      quét folder, giải nén an toàn (zip-slip, zip bomb, tên file CP1258), danh sách lớp
-  analysis/      nhận diện công nghệ, phân tích tĩnh, compile/test C/C++ (MinGW), chạy tiến trình có giới hạn
+  importer/      quét folder, giải nén an toàn (zip-slip, zip bomb, tên file CP1258), đọc file Word / Excel / PowerPoint (.doc/.docx, .xls/.xlsx, .ppt/.pptx, .rtf), danh sách lớp
+  analysis/      nhận diện công nghệ, phân tích tĩnh, kiểm tra hình thức báo cáo, compile/test C/C++ (MinGW), chạy tiến trình có giới hạn
   grading/       prompt + JSON schema, pipeline chấm 1 SV, hàng đợi tuần tự (pause/resume/cancel, tiếp tục sau khi tắt app)
   integrity/     fingerprint winnowing (kiểu MOSS), so sánh cặp, cluster
   reports/       Excel (exceljs), CSV, PDF (printToPDF)

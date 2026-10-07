@@ -1,6 +1,6 @@
 import { evaluatePenalty, normalizePolicy } from '@shared/aiPolicy'
-import { BUILTIN_PROFILES, DEFAULT_AI_POLICY, round2 } from '@shared/constants'
-import type { AiPenalty, Assignment, Criterion, GradeStatus, StudentResult, StudentRow, TechProfile } from '@shared/types'
+import { BUILTIN_PROFILES, DEFAULT_AI_POLICY, DEFAULT_REPORT_CHECK, round2, sourceLabel, sourcesFor } from '@shared/constants'
+import type { AiPenalty, Assignment, AssignmentKind, Criterion, GradeStatus, StudentResult, StudentRow, TechProfile } from '@shared/types'
 import { all, get, nowIso, run, transaction } from './db'
 import { getSettings } from './settings'
 
@@ -9,6 +9,8 @@ import { getSettings } from './settings'
 const DEFAULT_ASSIGNMENT: Omit<Assignment, 'id' | 'createdAt' | 'updatedAt'> = {
   name: '',
   className: '',
+  kind: 'code',
+  reportCheck: DEFAULT_REPORT_CHECK,
   profileId: 'cpp',
   description: '',
   passThreshold: 5,
@@ -29,7 +31,16 @@ const DEFAULT_ASSIGNMENT: Omit<Assignment, 'id' | 'createdAt' | 'updatedAt'> = {
 
 function rowToAssignment(row: { id: number; data: string; created_at: string; updated_at: string }): Assignment {
   const data = JSON.parse(row.data)
-  return { ...DEFAULT_ASSIGNMENT, ...data, aiPolicy: normalizePolicy(data.aiPolicy), id: row.id, createdAt: row.created_at, updatedAt: row.updated_at }
+  return {
+    ...DEFAULT_ASSIGNMENT,
+    ...data,
+    kind: data.kind === 'report' ? 'report' : 'code',
+    reportCheck: { ...DEFAULT_REPORT_CHECK, ...(data.reportCheck ?? {}) },
+    aiPolicy: normalizePolicy(data.aiPolicy),
+    id: row.id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  }
 }
 
 export function listAssignments(userId: number): Assignment[] {
@@ -48,8 +59,11 @@ export function assignmentOwner(id: number): number | null {
   return get<{ user_id: number }>('SELECT user_id FROM assignments WHERE id = ?', [id])?.user_id ?? null
 }
 
-export function validateRubric(rubric: Criterion[]): string | null {
+export function validateRubric(rubric: Criterion[], kind: AssignmentKind = 'code'): string | null {
   if (!rubric.length) return 'Rubric chưa có tiêu chí nào'
+  const allowed = sourcesFor(kind)
+  const bad = rubric.find((c) => !allowed.includes(c.source))
+  if (bad) return `Tiêu chí "${bad.name}" dùng nguồn chấm "${sourceLabel(bad.source, kind)}" — không áp dụng cho bài báo cáo`
   const total = round2(rubric.reduce((s, c) => s + (Number(c.max) || 0), 0))
   if (Math.abs(total - 10) > 0.001) return `Tổng điểm rubric phải bằng 10 (hiện tại ${total})`
   const ids = new Set<string>()

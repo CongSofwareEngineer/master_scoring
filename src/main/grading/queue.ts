@@ -61,7 +61,7 @@ function updateEta(): void {
 
 export function canStart(assignmentId: number): { ok: boolean; reason?: string } {
   const a = getAssignment(assignmentId)
-  const rubricErr = validateRubric(a.rubric)
+  const rubricErr = validateRubric(a.rubric, a.kind)
   if (rubricErr) return { ok: false, reason: rubricErr }
   const valid = listStudents(assignmentId).filter((s) => s.scanStatus === 'valid')
   if (!valid.length) return { ok: false, reason: 'Chưa có bài nộp hợp lệ — hãy chọn folder và quét bài nộp' }

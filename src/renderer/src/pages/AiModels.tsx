@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CheckCircle2, Cloud, Cpu, FolderOpen, HardDrive, Play, Power, RotateCcw, Trash2, Upload } from 'lucide-react'
+import { CONTEXT_OPTIONS, DEFAULT_CONTEXT, LOCAL_MAX_CONTEXT } from '@shared/constants'
 import type { AppSettings, ModelInfo } from '@shared/types'
 import { call, platform } from '../lib/api'
 import { fmtBytes } from '../lib/format'
@@ -158,11 +159,15 @@ export function AiModelsPage(): JSX.Element {
                 </select>
               </Field>
             )}
-            <Field label="Context (token)" hint="Lớn hơn tốn RAM hơn; bài vượt context được tóm tắt từng file">
+            <Field
+              label="Context (token)"
+              hint={`Áp dụng cho cả Cloud AI (dùng đúng giá trị chọn — chọn ≤ giới hạn context của model) và Local AI (tối đa ${LOCAL_MAX_CONTEXT / 1024}K). Bài vượt context được tóm tắt từng phần.`}
+            >
               <select className="select" value={runtime.contextSize} onChange={(e) => setRuntime({ ...runtime, contextSize: Number(e.target.value) })}>
-                {[4096, 8192, 12288, 16384, 32768].map((n) => (
+                {(CONTEXT_OPTIONS.includes(runtime.contextSize ?? 0) ? CONTEXT_OPTIONS : [...CONTEXT_OPTIONS, runtime.contextSize ?? DEFAULT_CONTEXT].sort((a, b) => a - b)).map((n) => (
                   <option key={n} value={n}>
-                    {n / 1024}K{n === 8192 ? ' (mặc định)' : ''}
+                    {Math.round(n / 1024)}K{n === DEFAULT_CONTEXT ? ' (mặc định)' : ''}
+                    {n > LOCAL_MAX_CONTEXT ? ' — Cloud AI' : ''}
                   </option>
                 ))}
               </select>

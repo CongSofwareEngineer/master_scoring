@@ -1,4 +1,4 @@
-// Quy ước đặt tên file bài nộp: <Họ tên>_<MSSV>.zip (vd HoDienCong_23546.zip).
+// Quy ước đặt tên file bài nộp: <Họ tên>_<MSSV>.<đuôi nén> (vd HoDienCong_23546.zip, HoDienCong_23546.rar).
 // Chỉ cần có dấu "_" để tách họ tên và MSSV, không có ràng buộc về định dạng MSSV.
 
 export interface ParsedSubmissionName {
@@ -6,8 +6,15 @@ export interface ParsedSubmissionName {
   mssv: string
 }
 
-export const SUPPORTED_EXTS = ['.zip']
-export const UNSUPPORTED_EXTS = ['.rar', '.7z']
+// .zip đọc bằng yauzl; các đuôi còn lại đọc bằng 7-Zip (src/main/importer/sevenZip.ts).
+// .arc / .pak: 7-Zip không có bộ đọc riêng — chỉ mở được khi bên trong thực chất là zip/7z/rar...
+export const SUPPORTED_EXTS = [
+  '.zip', '.rar', '.7z', '.tar', '.tgz', '.tbz', '.tbz2', '.txz', '.gz', '.bz2', '.xz', '.zst',
+  '.iso', '.dmg', '.arj', '.cab', '.lzh', '.lha', '.arc', '.pak'
+]
+export const UNSUPPORTED_EXTS: string[] = []
+// Đuôi chỉ nén 1 file (thường là .tar bên trong) — "A_1.tar.gz" có stem "A_1".
+export const COMPRESS_ONLY_EXTS = ['.gz', '.bz2', '.xz', '.zst']
 
 function baseName(fileName: string): string {
   return fileName.replace(/\\/g, '/').split('/').pop() ?? fileName
@@ -20,11 +27,29 @@ export function fileExtension(fileName: string): string {
   return dot > 0 ? base.slice(dot).toLowerCase() : ''
 }
 
-/** Bỏ đường dẫn và đuôi file → phần "stem". */
+/** Bỏ đường dẫn và đuôi file → phần "stem". Đuôi kép .tar.gz / .tar.bz2 / .tar.xz / .tar.zst bỏ cả 2. */
 export function stripExtension(fileName: string): string {
   const base = baseName(fileName)
   const dot = base.lastIndexOf('.')
-  return dot > 0 ? base.slice(0, dot) : base
+  if (dot <= 0) return base
+  const stem = base.slice(0, dot)
+  if (COMPRESS_ONLY_EXTS.includes(base.slice(dot).toLowerCase()) && /.\.tar$/i.test(stem)) return stem.slice(0, -4)
+  return stem
+}
+
+/** Tên file có phải file nén đọc được không (theo đuôi). */
+export function isArchiveName(fileName: string): boolean {
+  return SUPPORTED_EXTS.includes(fileExtension(fileName))
+}
+
+// Assignment loại "báo cáo": nhận thêm file Office nộp thẳng (<HọTên>_<MSSV>.docx / .doc / .xlsx / .pptx…), không cần nén.
+// .doc và .docx (tương tự .xls/.xlsx, .ppt/.pptx) đều đọc được — nhận diện theo nội dung file (src/main/importer/office.ts).
+export const REPORT_EXTS = ['.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt', '.rtf']
+
+/** File ở folder bài nộp có được quét không: file nén, hoặc file Office với assignment báo cáo. */
+export function isSubmissionFile(fileName: string, kind: 'code' | 'report' = 'code'): boolean {
+  if (baseName(fileName).startsWith('~$')) return false // file khoá tạm của Word / Excel / PowerPoint
+  return isArchiveName(fileName) || (kind === 'report' && REPORT_EXTS.includes(fileExtension(fileName)))
 }
 
 /** Tách theo dấu "_" CUỐI CÙNG. Trả về null nếu không có dấu "_" hoặc "_" đứng đầu. */
@@ -68,7 +93,7 @@ export interface NameCheckResult {
 export function checkSubmissionName(fileName: string): NameCheckResult {
   const ext = fileExtension(fileName)
   if (UNSUPPORTED_EXTS.includes(ext)) return { verdict: 'unsupported_ext', name: null, mssv: null, rawMssv: null }
-  if (!SUPPORTED_EXTS.includes(ext)) return { verdict: 'ignored_ext', name: null, mssv: null, rawMssv: null }
+  if (!SUPPORTED_EXTS.includes(ext) && !REPORT_EXTS.includes(ext)) return { verdict: 'ignored_ext', name: null, mssv: null, rawMssv: null }
   const stem = stripExtension(fileName).normalize('NFC')
   const idx = stem.lastIndexOf('_')
   if (idx < 0) return { verdict: 'no_separator', name: null, mssv: null, rawMssv: null }

@@ -15,7 +15,8 @@
   `pack:*`. `pack:*` không tăng version (dùng để build lại).
 - **Tăng version (`bump-version.mjs`):** mặc định patch; chọn bằng tham số hoặc `BUMP=minor|major|none`. Cập nhật
   `package.json` + `package-lock.json`. Version hiển thị trên top bar qua `__APP_VERSION__`.
-- **pack:win:** `gen-icon` → `fetch-runtime win` (llama-server CPU + Vulkan, VC++ Redistributable) → `gen-cert` →
+- **pack:win:** `gen-icon` → `fetch-runtime win` (llama-server CPU + Vulkan, 7-Zip `7z.exe + 7z.dll` →
+  `resources/runtime/7zip`, VC++ Redistributable) → `gen-cert` →
   `electron-vite build` → `builder.mjs --win nsis --x64`.
 - **Ký số Windows:**
   - `gen-cert.mjs` tạo chứng chỉ tự ký bằng `openssl` vào `build/cert/` (`codesign.pfx`, `password.txt`,
@@ -41,7 +42,11 @@
        anyway") không kích hoạt** vì SmartScreen chỉ kiểm file có MOTW.
     3. Chạy bộ cài, truyền nguyên tham số (`setup.bat /S` → cài im lặng).
     Văn bản bat thuần ASCII (tránh lỗi mã hoá cmd), dòng CRLF; có nhúng cert chỉ sinh khi ký tự ký.
-- **pack:mac:** giống trên nhưng runtime Metal theo kiến trúc (`resources/runtime-mac/<arch>`), không ký mặc định.
+- **pack:mac:** giống trên nhưng runtime Metal theo kiến trúc (`resources/runtime-mac/<arch>`, gồm cả 7-Zip `7zz` bản
+  universal chép vào `<arch>/7zip`), không ký mặc định.
+- **7-Zip (đọc bài nộp .rar/.7z/.tar.gz/.iso/.dmg…):** tải bản cố định `SEVEN_ZIP_VER` từ 7-zip.org (không qua GitHub
+  API). Windows: tải bộ cài `7z<ver>-x64.exe` (là 7z SFX) rồi bóc `7z.exe`, `7z.dll`, `License.txt` bằng 7-Zip của máy
+  build (`7zr.exe` trên Windows, `7zz` mac/linux tải tạm) → build Windows chạy được cả trên Mac. Đã có thì bỏ qua.
 - **Kết quả:** `release/<version>/MasterScoring-Setup-<version>.exe` (+ `setup.bat`, `.cer`, `trust-cert.bat` khi ký
   tự ký), `MasterScoring-<version>-<arch>.dmg`.
 - **NSIS:** cài theo user (không cần Admin), cho đổi thư mục, shortcut Desktop + Start Menu, gỡ cài không xoá dữ liệu.

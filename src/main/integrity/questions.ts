@@ -1,5 +1,6 @@
 // Câu hỏi vấn đáp: bài có % code AI cao → AI đề xuất câu hỏi để giáo viên hỏi trực tiếp,
 // kiểm tra sinh viên có hiểu code mình nộp hay không. Câu hỏi bám vào các đoạn nghi do AI viết.
+import { effectiveContext } from '@shared/constants'
 import type { AiEstimate, AiQuestion, AiQuestions, AiSegment, Assignment, Lang } from '@shared/types'
 import { chat, type BackendConfig, type ChatMessage } from '../ai/client'
 import { nowIso } from '../db'
@@ -157,7 +158,7 @@ export async function generateQuestions(opts: {
     backMap.set(anon(p), p)
   }
   const segs = pickSegments(estimate).map((g) => ({ ...g, file: anon(g.file) }))
-  const ctx = backend.kind === 'local' ? s.contextSize : 32_000
+  const ctx = effectiveContext(backend.kind, s.contextSize)
   const base = estimateTokens(messages({ ...a, description: anon(a.description) }, estimate.aiPercent, '', lang).map((m) => m.content).join('\n'))
   const budget = Math.max(600, Math.min(12_000, ctx - OUTPUT_TOKENS - base - 200))
   const { text, used } = excerpt(files, segs, budget)

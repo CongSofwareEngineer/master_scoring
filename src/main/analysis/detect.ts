@@ -1,5 +1,5 @@
-import { AUTO_PROFILE_ID } from '@shared/constants'
-import type { TechProfile } from '@shared/types'
+import { AUTO_PROFILE_ID, REPORT_PROFILE, REPORT_PROFILE_ID } from '@shared/constants'
+import type { Assignment, TechProfile } from '@shared/types'
 import { decodeText, loadSubmission, matchesIgnore, type ExtractLimits, type Submission } from '../importer/extract'
 
 // Profile dạng framework/project: nhận diện bằng file đánh dấu (package.json, Manifest...), ưu tiên theo thứ tự.
@@ -64,7 +64,13 @@ function filterFiles(files: Map<string, Buffer>, ignore: string[]): Map<string, 
   return new Map([...files].filter(([p]) => !matchesIgnore(p, ignore) && !DETECT_ONLY.includes(p.split('/').pop()!.toLowerCase())))
 }
 
+// Profile dùng để đọc bài của assignment: báo cáo luôn dùng REPORT_PROFILE (bỏ qua Tech Profile đã chọn).
+export function gradingProfileId(a: Pick<Assignment, 'kind' | 'profileId'>): string {
+  return a.kind === 'report' ? REPORT_PROFILE_ID : a.profileId
+}
+
 // Đọc bài nộp để chấm theo profile của assignment.
+// - Báo cáo (REPORT_PROFILE_ID): chỉ lấy file Word / Excel / PowerPoint, chuyển thành văn bản.
 // - Đã chọn sẵn công nghệ: lọc theo profile đó, không nhận diện.
 // - "Tự động nhận diện": đọc rộng, nhận diện công nghệ, rồi lọc lại theo profile nhận diện được
 //   (không nhận diện được → giữ profile auto, chấm theo tiêu chí chung).
@@ -74,6 +80,9 @@ export async function loadForGrading(
   profileId: string,
   limits: ExtractLimits
 ): Promise<{ sub: Submission; profile: TechProfile; detected: string | null }> {
+  if (profileId === REPORT_PROFILE_ID) {
+    return { sub: await loadSubmission(zipPath, REPORT_PROFILE, limits), profile: REPORT_PROFILE, detected: null }
+  }
   const chosen = profiles.find((p) => p.id === profileId) ?? profiles.find((p) => p.id === AUTO_PROFILE_ID) ?? profiles[0]
   if (chosen.id !== AUTO_PROFILE_ID) {
     const sub = await loadSubmission(zipPath, chosen, limits)
