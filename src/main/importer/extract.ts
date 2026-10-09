@@ -21,6 +21,8 @@ import { ArchiveError, extractArchive, findSevenZip, listArchive } from './seven
 
 export interface Submission {
   files: Map<string, Buffer>
+  // assignment báo cáo: bytes gốc của file Word / Excel / PowerPoint (giữ tên file gốc) để xem trước kiểu Office.
+  rawDocs: Map<string, Buffer>
   docs: DocStats[] // assignment báo cáo: thống kê từng file Office (files chứa văn bản đã chuyển, giữ tên file gốc)
   warnings: string[]
   skippedLarge: number
@@ -159,6 +161,7 @@ interface Ctx {
   totalBytes: number
   totalFiles: number
   out: Map<string, Buffer>
+  rawDocs: Map<string, Buffer>
   warnings: string[]
   skippedLarge: number
   skippedBinary: number
@@ -212,6 +215,7 @@ async function addDocx(full: string, buf: Buffer, ctx: Ctx, throwOnError = false
     const { text, stats } = await officeToText(buf)
     const out = Buffer.from(text, 'utf8')
     ctx.out.set(full, out)
+    ctx.rawDocs.set(full, buf)
     ctx.docStats.set(out, stats)
   } catch (e: any) {
     if (throwOnError) throw new SubmissionError(e?.message ?? 'Không đọc được file')
@@ -369,6 +373,7 @@ export async function loadSubmission(zipPath: string, profile: TechProfile, limi
     totalBytes: 0,
     totalFiles: 0,
     out: new Map(),
+    rawDocs: new Map(),
     warnings: [],
     skippedLarge: 0,
     skippedBinary: 0
@@ -390,6 +395,7 @@ export async function loadSubmission(zipPath: string, profile: TechProfile, limi
     }
   }
   const files = stripCommonRoot(ctx.out)
+  const rawDocs = stripCommonRoot(ctx.rawDocs)
   // Sắp xếp ổn định theo đường dẫn
   const sorted = new Map([...files.entries()].sort((a, b) => a[0].localeCompare(b[0])))
   const docs: DocStats[] = []
@@ -397,7 +403,7 @@ export async function loadSubmission(zipPath: string, profile: TechProfile, limi
     const st = ctx.docStats.get(buf)
     if (st) docs.push({ file, ...st })
   }
-  return { files: sorted, docs, warnings: ctx.warnings, skippedLarge: ctx.skippedLarge, skippedBinary: ctx.skippedBinary }
+  return { files: sorted, rawDocs, docs, warnings: ctx.warnings, skippedLarge: ctx.skippedLarge, skippedBinary: ctx.skippedBinary }
 }
 
 function archiveErrorText(e: ArchiveError): string {

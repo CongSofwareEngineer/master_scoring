@@ -7,8 +7,10 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Eye,
   File,
   FileCode2,
+  FileText,
   Folder,
   FolderOpen,
   Info,
@@ -30,6 +32,7 @@ import { cls, fmtScore, fmtTime } from '../lib/format'
 import { useT } from '../lib/i18n'
 import { attempt, useCurrentAssignment, useStore } from '../lib/store'
 import { CodeViewer, openSearch, type LineMark } from '../components/CodeViewer'
+import { OfficePreview, officeKind } from '../components/OfficePreview'
 import { AiLevelBadge, Empty, OriginBar, StatusBadge } from '../components/ui'
 import { NoAssignment } from './Dashboard'
 
@@ -106,6 +109,10 @@ export function CodeReviewPage(): JSX.Element {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [note, setNote] = useState('')
   const [showAiMarks, setShowAiMarks] = useState(true)
+  const [viewMode, setViewMode] = useState<'text' | 'preview'>('text')
+  const [officeData, setOfficeData] = useState<Uint8Array | null>(null)
+  const [officeErr, setOfficeErr] = useState('')
+  const [officeLoading, setOfficeLoading] = useState(false)
   const viewRef = useRef<EditorView | null>(null)
 
   useEffect(() => {
@@ -189,6 +196,34 @@ export function CodeReviewPage(): JSX.Element {
     }
   }, [studentId, path, toast])
 
+  // Đổi file / sinh viên → xoá bản xem trước Office đang giữ
+  useEffect(() => {
+    setOfficeData(null)
+    setOfficeErr('')
+  }, [studentId, path])
+
+  // Chế độ Xem trước + file Office → tải bytes gốc để render
+  useEffect(() => {
+    if (viewMode !== 'preview' || !a || a.kind !== 'report' || !studentId || !path || !officeKind(path)) return
+    let alive = true
+    setOfficeLoading(true)
+    setOfficeErr('')
+    setOfficeData(null)
+    void call<Uint8Array>('review:office', studentId, path)
+      .then((d) => {
+        if (alive) setOfficeData(d)
+      })
+      .catch((e) => {
+        if (alive) setOfficeErr(e.message)
+      })
+      .finally(() => {
+        if (alive) setOfficeLoading(false)
+      })
+    return () => {
+      alive = false
+    }
+  }, [viewMode, studentId, path, a?.kind])
+
   const idx = students.findIndex((s) => s.id === studentId)
   const student = students[idx]
   const goto = (d: number): void => {
@@ -197,6 +232,7 @@ export function CodeReviewPage(): JSX.Element {
   }
   const openLoc = (file?: string, line?: number): void => {
     if (!file) return
+    if (line) setViewMode('text')
     if (file === path) {
       if (line) setJump({ line, nonce: Date.now() })
     } else {
@@ -277,6 +313,9 @@ export function CodeReviewPage(): JSX.Element {
   }
 
   const tree = buildTree(files)
+  const office = path ? officeKind(path) : null
+  const canPreview = a.kind === 'report' && !!office
+  const mode = canPreview ? viewMode : 'text'
   const renderTree = (nodes: TreeNode[], depth: number): JSX.Element[] =>
     nodes.flatMap((n) => {
       const pad = 8 + depth * 14
@@ -454,12 +493,36 @@ export function CodeReviewPage(): JSX.Element {
                 {path ?? '—'}
               </span>
               <div className="grow" />
-              <span className="kbd">Ctrl+F</span>
+              {canPreview && (
+                <div className="seg-toggle" title={t('Xem kiểu Office / văn bản')}>
+                  <button className={cls(mode === 'text' && 'active')} onClick={() => setViewMode('text')}>
+                    <FileText size={12} /> {t('Văn bản')}
+                  </button>
+                  <button className={cls(mode === 'preview' && 'active')} onClick={() => setViewMode('preview')}>
+                    <Eye size={12} /> {t('Xem trước')}
+                  </button>
+                </div>
+              )}
+              {mode === 'text' && <span className="kbd">Ctrl+F</span>}
               <span className="meta">read-only</span>
             </div>
             <div className="panel-body" style={{ overflow: 'hidden' }}>
               {path ? (
-                <CodeViewer path={path} content={content} marks={marks} jump={jump} onReady={(v) => (viewRef.current = v)} />
+                mode === 'preview' && office ? (
+                  officeLoading ? (
+                    <Empty title={t('Đang tải bản xem trước…')} />
+                  ) : officeErr ? (
+                    <div className="callout error" style={{ margin: 12 }}>
+                      {officeErr}
+                    </div>
+                  ) : officeData ? (
+                    <OfficePreview path={path} kind={office} data={officeData} />
+                  ) : (
+                    <Empty title={t('Chưa tải được bản xem trước')} />
+                  )
+                ) : (
+                  <CodeViewer path={path} content={content} marks={marks} jump={jump} onReady={(v) => (viewRef.current = v)} />
+                )
               ) : (
                 <Empty title={files.length ? 'Chọn file để xem' : 'Đang tải file...'} />
               )}

@@ -4,6 +4,7 @@
 Mỗi assignment chọn loại bài **Chấm code** hoặc **Chấm báo cáo (Word / Excel / PowerPoint)** — hai loại có bộ filter chấm khác nhau (xem
 [docs/instruction/report-grading.md](docs/instruction/report-grading.md)). Context AI chọn trong AI Models: mặc định 32K,
 tới 200K cho Cloud AI (Local AI tối đa 32K).
+Trong Code Review, bài báo cáo **.docx / .xlsx** xem được kiểu Office (nút **Văn bản / Xem trước**): Word giữ bố cục gần như bản gốc, Excel hiện đúng bảng / sheet / định dạng.
 Thiết kế chi tiết: [Master_Scoring_Design.md](Master_Scoring_Design.md).
 
 Công nghệ: **Electron + React + TypeScript** (phương án thay thế trong mục 23 của design — dev được trên macOS/Windows,

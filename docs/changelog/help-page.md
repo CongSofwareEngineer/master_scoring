@@ -9,3 +9,4 @@
 - 2026-10-07 | Sửa | Trang Hướng dẫn: thêm mục chấm báo cáo (.docx) và ghi chú nộp .docx thẳng — hỗ trợ chấm báo cáo
 - 2026-10-07 | Sửa | Trang Hướng dẫn: mục chấm báo cáo và ghi chú nộp thẳng liệt kê Word / Excel / PowerPoint (.doc .docx .xls .xlsx .ppt .pptx .rtf), bỏ câu ".doc chưa đọc được" — khớp logic đọc file Office mới
 - 2026-10-09 | Sửa | Trang Hướng dẫn: bổ sung Solidity vào danh sách công nghệ hỗ trợ — khớp profile và chấm compile/test mới
+- 2026-10-09 | Sửa | Trang Hướng dẫn: ghi chú xem bài báo cáo .docx/.xlsx trong Code Review ở chế độ Văn bản / Xem trước — giới thiệu tính năng xem trước kiểu Office mới

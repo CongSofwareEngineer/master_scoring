@@ -9,7 +9,9 @@
 
 - Tab Tổng quan có mục "Chấm báo cáo / bài viết (Word / Excel / PowerPoint)"; mục "Định dạng file nén" có ghi chú
   assignment báo cáo nhận file Office nộp thẳng (.doc .docx .xls .xlsx .ppt .pptx .rtf; .doc = .docx vì nhận diện theo
-  nội dung). `checkSubmissionName` coi các đuôi trong `REPORT_EXTS` là hợp lệ (đúng với assignment báo cáo).
+  nội dung). Mục báo cáo cũng ghi chú xem bài trong Code Review được ở chế độ **Văn bản / Xem trước** (bố cục Word /
+  Excel) cho `.docx` / `.xlsx` (xem `code-review.md`). `checkSubmissionName` coi các đuôi trong `REPORT_EXTS` là hợp lệ
+  (đúng với assignment báo cáo).
 - Mục "Định dạng file nén" liệt kê đuôi hỗ trợ (.zip .rar .7z .tar(.gz/.bz2/.xz) .iso .dmg .arj .cab .lzh) và không hỗ
   trợ (có mật khẩu, .arc / .pak kiểu cũ) — phải khớp `SUPPORTED_EXTS` và [zip-extract.md](zip-extract.md).
 - 4 tab: Tổng quan, Quy tắc đặt tên file (mặc định), Quy trình sử dụng, Khắc phục sự cố. Mở tab cụ thể bằng

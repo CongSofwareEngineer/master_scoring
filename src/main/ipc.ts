@@ -44,7 +44,7 @@ import {
   updateResult
 } from './repo'
 import { defaultReportName, exportCsv, exportExcel, exportPdf, reportColumns } from './reports/reports'
-import { invalidateReview, listFiles, readFile, searchProject } from './review'
+import { invalidateReview, listFiles, readFile, readRawFile, searchProject } from './review'
 import { getSettings, updateSettings } from './settings'
 
 type Handler = (...args: any[]) => any
@@ -327,6 +327,10 @@ export function registerIpc(): void {
   handle('review:read', (studentId: number, path: string) => {
     ownStudent(studentId)
     return readFile(studentId, path)
+  })
+  handle('review:office', (studentId: number, path: string) => {
+    ownStudent(studentId)
+    return readRawFile(studentId, path)
   })
   handle('review:search', (studentId: number, q: string) => {
     ownStudent(studentId)

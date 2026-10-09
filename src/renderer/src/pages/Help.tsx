@@ -68,7 +68,7 @@ function Overview(): JSX.Element {
             <strong>Chấm báo cáo / bài viết (Word / Excel / PowerPoint)</strong>
             <span className="meta">
               Assignment loại “Chấm báo cáo”: đọc file Word (.doc/.docx), Excel (.xls/.xlsx), PowerPoint (.ppt/.pptx), kiểm tra hình thức (số từ, mục bắt buộc, tài liệu tham khảo), AI chấm nội dung theo rubric báo cáo,
-              so trùng lặp văn bản giữa các bài
+              so trùng lặp văn bản giữa các bài. Xem bài trong Code Review: file .docx / .xlsx có nút <b>Văn bản / Xem trước</b> để xem đúng bố cục Word / Excel
             </span>
           </div>
         </div>

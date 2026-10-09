@@ -68,7 +68,9 @@
   thì cả bài lỗi. Trong file nén: chỉ lấy file có đuôi trong `REPORT_EXTS` (≤ 100 MB), vẫn giải file nén lồng 1 cấp;
   `.pdf .odt .ods .odp .pages .numbers .key` → cảnh báo "Chưa đọc được file … — cần nộp file Word / Excel /
   PowerPoint"; file hỏng trong file nén → cảnh báo. Văn bản được lưu trong `files` dưới **tên file gốc** (vd
-  `BaoCao.pptx`), `Submission.docs` chứa thống kê từng file.
+  `BaoCao.pptx`), `Submission.docs` chứa thống kê từng file. Bytes Office gốc được giữ ở `Submission.rawDocs`
+  (cùng khoá tên file; `stripCommonRoot` như `files`) để Code Review **xem trước kiểu Office** — chỉ giữ khi đọc
+  file thành công, không ghi DB (mất khi khởi động lại / đổi file nộp).
 - **Kiểm tra hình thức (`checkReport`, cấu hình `Assignment.reportCheck`, mặc định `DEFAULT_REPORT_CHECK`):**
   - Số từ tối thiểu (mặc định 1500; dưới 70% → lỗi, còn lại cảnh báo) / tối đa (0 = không giới hạn).
   - Mục bắt buộc (mặc định Mở đầu, Kết luận): so khớp sau `normalizeHeading` (bỏ dấu, chữ thường, bỏ số thứ tự /
@@ -94,6 +96,9 @@
   chứa file Office — mục "Mẫu báo cáo giáo viên phát" ở tab Bài nộp) được loại trừ.
 - **Code Review:** file Word / Excel / PowerPoint hiện dưới dạng văn bản đã chuyển; tab Tự động có khung **Kiểm tra hình thức** (số từ,
   trang, heading — bấm để nhảy tới dòng, bảng, hình, mục thiếu). Nhãn nguồn chấm theo `sourceLabel(source, kind)`.
+  Với `.docx`/`.xlsx` có thêm nút **Văn bản / Xem trước** để xem đúng bố cục Office — chi tiết ở
+  `code-review.md` (`OfficePreview.tsx`, IPC `review:office`, `readRawFile`). File cũ `.doc`/`.xls` chỉ xem được
+  ở chế độ Văn bản.
 
 ## Lưu ý / giới hạn
 
