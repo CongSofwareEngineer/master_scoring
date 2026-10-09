@@ -8,3 +8,4 @@
 - 2026-10-07 | Sửa | Trang Hướng dẫn: mục "Định dạng file nén" + "File nén bị từ chối" liệt kê các định dạng mới hỗ trợ (.rar .7z .tar.gz .iso .dmg .arj…) và giới hạn .arc/.pak — khớp logic đọc file nén qua 7-Zip
 - 2026-10-07 | Sửa | Trang Hướng dẫn: thêm mục chấm báo cáo (.docx) và ghi chú nộp .docx thẳng — hỗ trợ chấm báo cáo
 - 2026-10-07 | Sửa | Trang Hướng dẫn: mục chấm báo cáo và ghi chú nộp thẳng liệt kê Word / Excel / PowerPoint (.doc .docx .xls .xlsx .ppt .pptx .rtf), bỏ câu ".doc chưa đọc được" — khớp logic đọc file Office mới
+- 2026-10-09 | Sửa | Trang Hướng dẫn: bổ sung Solidity vào danh sách công nghệ hỗ trợ — khớp profile và chấm compile/test mới

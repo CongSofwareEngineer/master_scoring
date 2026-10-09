@@ -13,6 +13,7 @@ import type { AiEstimate, AiQuestions, AiSignal, Assignment, AutoResult, Criteri
 import { chat, cloudBackend, localBackend, type BackendConfig } from '../ai/client'
 import { compileAndTest } from '../analysis/cpp'
 import { gradingProfileId, loadForGrading } from '../analysis/detect'
+import { compileSolidity, testSolidity } from '../analysis/solidity'
 import { checkReport, reportFormatScore } from '../analysis/report'
 import { runProcess } from '../analysis/runner'
 import { runStatic, staticScore } from '../analysis/static'
@@ -361,6 +362,17 @@ export async function gradeStudent(
       const r = await compileAndTest(profile.id === 'c' ? 'c' : 'cpp', sub.files, a, workDir, signal)
       Object.assign(auto, r.auto)
       issues.push(...r.issues)
+    } else if (profile.id === 'solidity' && needsCompile && profile.buildEnabled) {
+      onStep('Biên dịch Solidity (solc)')
+      const c = await compileSolidity(sub.files, workDir, signal)
+      Object.assign(auto, c.auto)
+      issues.push(...c.issues)
+      if (auto.compile?.ok && a.rubric.some((x) => x.source === 'test')) {
+        onStep('Chạy test Solidity (forge)')
+        const tr = await testSolidity(sub.files, workDir, signal)
+        Object.assign(auto, tr.auto)
+        issues.push(...tr.issues)
+      }
     } else if (profile.id === 'android' && needsCompile) {
       if (profile.buildEnabled) {
         onStep('Build Android (Gradle)')

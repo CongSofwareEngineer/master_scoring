@@ -5,7 +5,7 @@ import { decodeText, loadSubmission, matchesIgnore, type ExtractLimits, type Sub
 // Profile dạng framework/project: nhận diện bằng file đánh dấu (package.json, Manifest...), ưu tiên theo thứ tự.
 const FRAMEWORK_PROFILES = ['android', 'nextjs', 'react-native', 'reactjs']
 // Ngôn ngữ thuần + profile tuỳ chỉnh: chọn profile có nhiều mã nguồn khớp nhất; bằng nhau thì theo thứ tự này.
-const LANGUAGE_PRIORITY = ['cpp', 'c', 'python', 'php', 'csharp', 'javascript', 'css']
+const LANGUAGE_PRIORITY = ['cpp', 'c', 'solidity', 'python', 'php', 'csharp', 'javascript', 'css']
 
 // File chỉ đọc để nhận diện công nghệ, không đưa vào chấm.
 const DETECT_ONLY = ['package.json']

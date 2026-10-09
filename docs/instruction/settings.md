@@ -21,7 +21,8 @@
 - Các nhóm cài đặt chính: ngôn ngữ; Local AI (`contextSize`, `llamaVariant`, `gpuLayers`, `threads`, `modelsDir`,
   `activeModelId`); `preventSleep`; giới hạn giải nén (`maxUnzipMb`, `maxFiles`); trùng lặp (`similarityEnabled`
   mặc định tắt, `similarityThreshold` 30–100); câu hỏi vấn đáp (`aiQuestionsEnabled` mặc định tắt,
-  `aiQuestionsMinPercent`); `anonymizeCloud`; đường dẫn công cụ (`androidSdkPath`, `jdkPath`, `mingwPath`).
+  `aiQuestionsMinPercent`); `anonymizeCloud`; đường dẫn công cụ (`androidSdkPath`, `jdkPath`, `mingwPath`, `solcPath`,
+  `forgePath`).
 
 ## Lưu ý / giới hạn
 

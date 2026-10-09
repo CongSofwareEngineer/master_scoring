@@ -206,6 +206,20 @@ const LANGUAGE_DEFINITIONS: Record<string, {
       /\.rs$/i
     ]
   },
+  solidity: {
+    name: 'Solidity',
+    extensions: ['.sol'],
+    filenames: [],
+    contentPatterns: [
+      /^\s*pragma\s+solidity\b/m,
+      /\bcontract\s+\w+/,
+      /\bmodifier\s+\w+/,
+      /\bmsg\.sender\b/,
+      /\brequire\s*\(/,
+      /\bfunction\s+\w+\s*\(/,
+      /\.sol$/i
+    ]
+  },
   swift: {
     name: 'Swift',
     extensions: ['.swift'],
@@ -413,7 +427,7 @@ const LANGUAGE_DEFINITIONS: Record<string, {
 const DETECTION_ORDER = [
   'react-native', 'nextjs', 'express', 'vue', 'angular', 'django', 'flask', 'laravel',
   'typescript', 'javascript', 'react', 
-  'python', 'php', 'csharp', 'java', 'ruby', 'go', 'rust', 'swift', 'kotlin',
+  'python', 'php', 'csharp', 'java', 'ruby', 'go', 'rust', 'solidity', 'swift', 'kotlin',
   'html', 'css', 'json', 'yaml', 'markdown', 'sql'
 ]
 

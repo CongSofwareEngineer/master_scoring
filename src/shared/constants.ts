@@ -88,6 +88,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   jdkPath: '',
   nodePath: '',
   mingwPath: '',
+  solcPath: '',
+  forgePath: '',
   sidebarCollapsed: false
 }
 
@@ -341,6 +343,27 @@ export const BUILTIN_PROFILES: TechProfile[] = [
       r('oop', 'OOP & thiết kế', 1.5, 'ai', 'Lớp, interface, kế thừa, đóng gói đúng mục đích.'),
       r('clean_code', 'Đặt tên & clean code', 1, 'ai', 'Tên theo PascalCase, không lặp code.'),
       r('docs', 'Comment / README', 0.5, 'ai', 'XML comment cho method, README mô tả.')
+    ]
+  },
+  {
+    id: 'solidity',
+    name: 'Solidity (Smart Contract)',
+    builtin: true,
+    detect: ['*.sol', 'foundry.toml', 'hardhat.config.js', 'hardhat.config.ts', 'truffle-config.js'],
+    ignore: ['node_modules/', 'artifacts/', 'cache/', '.deps/', 'lib/', 'build/', 'out/', 'coverage/', '*.json', '*.lock'],
+    extensions: ['.sol', '.txt', '.md', '.json', '.js', '.ts', '.toml'],
+    checks: 'Biên dịch solc (standard-json), test Foundry (forge test), pragma/contract, mẫu bảo mật cơ bản (tx.origin, selfdestruct, call), phân tích tĩnh',
+    buildEnabled: true,
+    buildNote: 'Biên dịch bằng solc (standard-json) nếu có; test bằng Foundry (forge test) nếu có. App không tự cài solc / Foundry.',
+    rubric: [
+      r('structure_project', 'Cấu trúc project Solidity', 1, 'static', 'Có pragma, contract/interface/library tách rõ, cấu trúc file hợp lý.'),
+      r('compile', 'Biên dịch được (solc)', 1, 'compile', 'Contract biên dịch không lỗi bằng solc.'),
+      r('tests', 'Test case đúng', 2, 'test', 'Chia đều theo số test case (Foundry) đạt.'),
+      r('requirements', 'Đúng yêu cầu đề', 2.5, 'ai', 'Các hàm/chức năng đề yêu cầu đã được cài đặt đúng theo đề bài.'),
+      r('security', 'Bảo mật smart contract', 1.5, 'static', 'Không dùng tx.origin phân quyền, kiểm tra giá trị trả về của call, hạn chế selfdestruct.'),
+      r('code_structure', 'Cấu trúc & tách hàm', 1, 'ai', 'Tách hàm/modifier hợp lý, phát event, không dồn logic vào một hàm.'),
+      r('clean_code', 'Đặt tên & clean code', 0.5, 'ai', 'Tên biến/hàm có nghĩa, dùng visibility (public/private/external) đúng.'),
+      r('docs', 'Comment / README', 0.5, 'ai', 'NatSpec/comment cho hàm quan trọng hoặc README mô tả contract.')
     ]
   },
   {

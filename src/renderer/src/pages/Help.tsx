@@ -43,7 +43,7 @@ function Overview(): JSX.Element {
       <div className="card-title">Master Scoring là gì?</div>
       <div className="meta">
         Master Scoring là ứng dụng chấm điểm tự động cho bài tập lập trình của sinh viên.
-        Ứng dụng hỗ trợ nhiều ngôn ngữ: Java Android, Next.js, C, C++ và có thể mở rộng.
+        Ứng dụng hỗ trợ nhiều ngôn ngữ: Java Android, Next.js, C, C++, Solidity và có thể mở rộng.
       </div>
       <div className="divider" />
       <div className="card-title">Chức năng chính</div>

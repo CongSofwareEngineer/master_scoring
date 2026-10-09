@@ -11,6 +11,7 @@ import { aiStatus, ensureLocalStarted, installAndUse, pauseModelDownload, restar
 import { getLocalState, stopLocal } from './ai/llama'
 import { currentDownload, deleteModel, hasPartial, importModelFile, listModels } from './ai/models'
 import { downloadMingw, findCompiler } from './analysis/mingw'
+import { findForge, findSolc } from './analysis/solidity'
 import { auth, changePassword, defaultAccountHint, getCurrentUser, requireUser, setCurrentUser, updateProfile } from './auth'
 import { backupTo, cleanWork, restoreFrom, storageUsage } from './backup'
 import { dashboardData } from './dashboard'
@@ -383,6 +384,16 @@ export function registerIpc(): void {
     const r = await dialog.showOpenDialog(win()!, { title: 'Chọn thư mục MinGW (chứa bin\\g++.exe)', properties: ['openDirectory'] })
     if (r.canceled || !r.filePaths[0]) return null
     updateSettings(null, { mingwPath: r.filePaths[0] })
+    return r.filePaths[0]
+  })
+  handle('solidity:status', async () => ({ solc: await findSolc(), forge: await findForge() }))
+  handle('solidity:pick', async (tool: 'solc' | 'forge') => {
+    const r = await dialog.showOpenDialog(win()!, {
+      title: tool === 'solc' ? 'Chọn file solc hoặc thư mục chứa solc' : 'Chọn file forge hoặc thư mục chứa forge',
+      properties: ['openFile', 'openDirectory']
+    })
+    if (r.canceled || !r.filePaths[0]) return null
+    updateSettings(null, tool === 'solc' ? { solcPath: r.filePaths[0] } : { forgePath: r.filePaths[0] })
     return r.filePaths[0]
   })
   handle('settings:pickDir', async (key: 'androidSdkPath' | 'jdkPath') => {

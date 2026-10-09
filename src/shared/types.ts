@@ -354,6 +354,8 @@ export interface AppSettings {
   jdkPath: string
   nodePath: string
   mingwPath: string
+  solcPath: string
+  forgePath: string
   sidebarCollapsed: boolean
 }
 

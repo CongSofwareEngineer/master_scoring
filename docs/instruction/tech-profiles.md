@@ -12,20 +12,21 @@
 - **TechProfile:** `id`, `name`, `detect` (quy tắc nhận diện), `ignore`, `extensions`, `checks`, `buildEnabled`,
   `buildNote`, `rubric` mẫu.
 - **Profile có sẵn:** `auto`, `android`, `nextjs`, `cpp`, `c`, `python`, `javascript`, `reactjs`, `react-native`, `php`,
-  `csharp`, `css`. Giáo viên sửa / thêm profile riêng (bảng `profiles`, theo user, ghi đè profile có sẵn cùng id).
+  `csharp`, `solidity`, `css`. Giáo viên sửa / thêm profile riêng (bảng `profiles`, theo user, ghi đè profile có sẵn cùng id).
   Mã profile: `a-z 0-9 _ -`, 2–32 ký tự.
 - **Quy tắc `detect`:** `*.ext` (trọng số = tổng dung lượng file khớp), tên file (`AndroidManifest.xml`),
   hoặc `file:dependency` (vd `package.json:next` — kiểm tra dependencies/devDependencies).
 - **Nhận diện (`detectProfile`):**
   1. Profile framework theo thứ tự ưu tiên `android → nextjs → react-native → reactjs`: khớp bất kỳ quy tắc nào là chọn.
   2. Còn lại (ngôn ngữ + profile tuỳ chỉnh): chọn profile có tổng trọng số lớn nhất; bằng nhau theo thứ tự
-     `cpp, c, python, php, csharp, javascript, css`. Kết quả `c` nhưng có file C++ → `cpp`.
+     `cpp, c, solidity, python, php, csharp, javascript, css`. Kết quả `c` nhưng có file C++ → `cpp`.
 - **`loadForGrading`:** profile cụ thể → lọc theo profile đó. Profile `auto` → đọc rộng (đuôi của mọi profile), nhận diện,
   rồi lọc lại theo `ignore` của profile nhận diện được; không nhận diện được → giữ `auto`, chấm theo tiêu chí chung
   (có cảnh báo). `package.json` chỉ dùng để nhận diện, không đưa vào chấm.
 - Profile nhận diện được lưu vào `results.detected_profile` và hiện trong Code Review / danh sách sinh viên.
-- **Build:** C/C++ bật sẵn (MinGW, xem `cpp-compile-test.md`); Android cần cấu hình Android SDK + JDK; Next.js không bao
-  giờ tự `npm install`.
+- **Build:** C/C++ bật sẵn (MinGW, xem `cpp-compile-test.md`); Solidity bật sẵn (biên dịch bằng `solc`, chạy test bằng
+  Foundry `forge`, xem `solidity-compile-test.md`) — đường dẫn `solc`/`forge` cấu hình ở Tech Profiles → Solidity;
+  Android cần cấu hình Android SDK + JDK; Next.js không bao giờ tự `npm install`.
 
 ## Lưu ý / giới hạn
 

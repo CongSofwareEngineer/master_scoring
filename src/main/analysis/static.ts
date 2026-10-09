@@ -2,7 +2,7 @@
 import type { AutoResult, Issue } from '@shared/types'
 import { decodeText } from '../importer/extract'
 
-const CODE_EXT = ['.java', '.kt', '.js', '.jsx', '.ts', '.tsx', '.mjs', '.c', '.cpp', '.cc', '.cxx', '.h', '.hpp', '.css', '.scss']
+const CODE_EXT = ['.java', '.kt', '.js', '.jsx', '.ts', '.tsx', '.mjs', '.c', '.cpp', '.cc', '.cxx', '.h', '.hpp', '.css', '.scss', '.sol']
 
 function ext(p: string): string {
   const i = p.lastIndexOf('.')
@@ -40,8 +40,9 @@ function longFunctions(path: string, text: string, maxLines: number): Issue[] {
   const issues: Issue[] = []
   const lines = text.split(/\r?\n/)
   const sig = /^\s*(?:(?:public|private|protected|static|final|async|export|default|inline|virtual|const|override|suspend|fun|function)\s+)*[\w<>[\],\s*&:~]+\s+\**&?(\w+)\s*\([^;{}]*\)\s*(?:const)?\s*(?:throws [\w.,\s]+)?\s*\{?\s*$/
+  const solSig = /^\s*function\s+(\w+)\s*\(/
   for (let i = 0; i < lines.length; i++) {
-    const m = lines[i].match(sig)
+    const m = lines[i].match(sig) ?? lines[i].match(solSig)
     if (!m || /^(if|for|while|switch|catch|return|else|new)$/.test(m[1])) continue
     let depth = 0
     let started = false
@@ -159,6 +160,29 @@ function cChecks(files: Map<string, string>): Issue[] {
   return issues
 }
 
+function solidityChecks(files: Map<string, string>): Issue[] {
+  const issues: Issue[] = []
+  const sources = [...files.entries()].filter(([p]) => /\.sol$/.test(p))
+  if (!sources.length) {
+    issues.push({ source: 'Static', severity: 'error', message: 'Không tìm thấy file mã nguồn Solidity' })
+    return issues
+  }
+  for (const [p, text] of sources) {
+    if (!/^\s*pragma\s+solidity\b/m.test(text)) {
+      issues.push({ source: 'Static', severity: 'warning', file: p, message: 'Thiếu khai báo "pragma solidity"' })
+    }
+    if (!/\b(contract|library|interface)\s+\w+/.test(text)) {
+      issues.push({ source: 'Static', severity: 'warning', file: p, message: 'Không có contract / library / interface nào' })
+    }
+    text.split(/\r?\n/).forEach((l, idx) => {
+      if (/\btx\.origin\b/.test(l)) issues.push({ source: 'Static', severity: 'warning', file: p, line: idx + 1, message: 'Dùng tx.origin để phân quyền (rủi ro phishing)' })
+      if (/\bselfdestruct\s*\(/.test(l)) issues.push({ source: 'Static', severity: 'warning', file: p, line: idx + 1, message: 'Dùng selfdestruct (không khuyến khích)' })
+      if (/\.(call|delegatecall)\s*(\(|\{)/.test(l)) issues.push({ source: 'Static', severity: 'info', file: p, line: idx + 1, message: 'Gọi call/delegatecall cấp thấp — cần kiểm tra giá trị trả về' })
+    })
+  }
+  return issues
+}
+
 export function runStatic(profileId: string, raw: Map<string, Buffer>): { issues: Issue[]; stats: NonNullable<AutoResult['stats']> } {
   const files = new Map<string, string>()
   for (const [p, b] of raw) files.set(p, decodeText(b))
@@ -172,12 +196,13 @@ export function runStatic(profileId: string, raw: Map<string, Buffer>): { issues
     const c = countLines(text)
     lines += c.lines
     comments += c.comments
-    if (/\.(java|kt|js|jsx|ts|tsx|c|cpp|cc|cxx)$/.test(p)) issues.push(...longFunctions(p, text, 80))
+    if (/\.(java|kt|js|jsx|ts|tsx|c|cpp|cc|cxx|sol)$/.test(p)) issues.push(...longFunctions(p, text, 80))
   }
   if (codeFiles === 0) issues.push({ source: 'Static', severity: 'error', message: 'Không tìm thấy file mã nguồn' })
   if (profileId === 'android') issues.push(...androidChecks(files))
   else if (profileId === 'nextjs') issues.push(...nextChecks(files))
   else if (profileId === 'c' || profileId === 'cpp') issues.push(...cChecks(files))
+  else if (profileId === 'solidity') issues.push(...solidityChecks(files))
   return { issues, stats: { files: codeFiles, lines, commentLines: comments } }
 }
 

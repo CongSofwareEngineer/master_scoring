@@ -120,6 +120,7 @@ export function TechProfilesPage(): JSX.Element {
             </div>
             {(draft.id === 'c' || draft.id === 'cpp') && <MingwCard />}
             {draft.id === 'android' && <AndroidToolsCard />}
+            {draft.id === 'solidity' && <SolidityToolsCard />}
             <div className="card">
               <div className="card-header">
                 <span className="card-title">Rubric mẫu</span>
@@ -287,6 +288,64 @@ function AndroidToolsCard(): JSX.Element {
         </Field>
       </div>
       <div className="meta mt-8">Build dùng Gradle cài trên máy giáo viên (lệnh gradle trong PATH). App không chạy gradlew.bat của sinh viên.</div>
+    </div>
+  )
+}
+
+function SolidityToolsCard(): JSX.Element {
+  const settings = useStore((s) => s.settings)
+  const setSettings = useStore((s) => s.setSettings)
+  const [status, setStatus] = useState<{ solc: string | null; forge: string | null } | null>(null)
+  const load = (): void => void call('solidity:status').then(setStatus as any)
+  useEffect(() => {
+    load()
+  }, [])
+  const pick = async (tool: 'solc' | 'forge'): Promise<void> => {
+    const r = await attempt(() => call<string | null>('solidity:pick', tool))
+    if (r) {
+      setSettings(await call('settings:get'))
+      load()
+    }
+  }
+  return (
+    <div className="card">
+      <div className="card-header">
+        <span className="card-title">Công cụ Solidity (tuỳ chọn)</span>
+      </div>
+      <div className="col gap-8">
+        <div className="row">
+          {status?.solc ? <CheckCircle2 size={15} className="success" /> : <XCircle size={15} className="error" />}
+          <span>solc: </span>
+          <span className="mono meta truncate">{status?.solc ?? 'Đang kiểm tra…'}</span>
+        </div>
+        <div className="row">
+          {status?.forge ? <CheckCircle2 size={15} className="success" /> : <XCircle size={15} className="error" />}
+          <span>forge: </span>
+          <span className="mono meta truncate">{status?.forge ?? 'Đang kiểm tra…'}</span>
+        </div>
+      </div>
+      <div className="form-grid mt-8">
+        <Field label="solc (biên dịch)">
+          <div className="row">
+            <input className="input mono" readOnly value={settings?.solcPath ?? ''} placeholder="Tự tìm trong PATH" />
+            <button className="btn btn-sm" onClick={() => pick('solc')}>
+              Chọn
+            </button>
+          </div>
+        </Field>
+        <Field label="forge (Foundry test)">
+          <div className="row">
+            <input className="input mono" readOnly value={settings?.forgePath ?? ''} placeholder="Tự tìm trong PATH" />
+            <button className="btn btn-sm" onClick={() => pick('forge')}>
+              Chọn
+            </button>
+          </div>
+        </Field>
+      </div>
+      <div className="meta mt-8">
+        App tự tìm solc / forge trên máy. Chọn solc để biên dịch; cài Foundry (forge) để chạy test. Không có solc thì tiêu chí biên dịch do
+        giáo viên chấm tay.
+      </div>
     </div>
   )
 }

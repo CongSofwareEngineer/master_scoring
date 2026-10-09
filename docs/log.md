@@ -36,6 +36,7 @@ Quy tắc: xem [../CLAUDE.md](../CLAUDE.md).
 | Hàng đợi chấm | [instruction/grading-queue.md](instruction/grading-queue.md) | [changelog/grading-queue.md](changelog/grading-queue.md) |
 | Phân tích tĩnh | [instruction/static-analysis.md](instruction/static-analysis.md) | [changelog/static-analysis.md](changelog/static-analysis.md) |
 | Biên dịch & chạy test C/C++ | [instruction/cpp-compile-test.md](instruction/cpp-compile-test.md) | [changelog/cpp-compile-test.md](changelog/cpp-compile-test.md) |
+| Biên dịch & chạy test Solidity | [instruction/solidity-compile-test.md](instruction/solidity-compile-test.md) | [changelog/solidity-compile-test.md](changelog/solidity-compile-test.md) |
 | Local AI (llama-server + model GGUF) | [instruction/local-ai.md](instruction/local-ai.md) | [changelog/local-ai.md](changelog/local-ai.md) |
 | Cloud AI & client gọi AI | [instruction/cloud-ai.md](instruction/cloud-ai.md) | [changelog/cloud-ai.md](changelog/cloud-ai.md) |
 

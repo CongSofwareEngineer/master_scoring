@@ -1,6 +1,6 @@
 # Master Scoring
 
-Ứng dụng desktop chấm điểm code sinh viên (Java Android, Next.js, C, C++) và **báo cáo / bài viết Word / Excel / PowerPoint (.doc .docx .xls .xlsx .ppt .pptx)** cho giáo viên.
+Ứng dụng desktop chấm điểm code sinh viên (Java Android, Next.js, C, C++, Solidity) và **báo cáo / bài viết Word / Excel / PowerPoint (.doc .docx .xls .xlsx .ppt .pptx)** cho giáo viên.
 Mỗi assignment chọn loại bài **Chấm code** hoặc **Chấm báo cáo (Word / Excel / PowerPoint)** — hai loại có bộ filter chấm khác nhau (xem
 [docs/instruction/report-grading.md](docs/instruction/report-grading.md)). Context AI chọn trong AI Models: mặc định 32K,
 tới 200K cho Cloud AI (Local AI tối đa 32K).
