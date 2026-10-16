@@ -15,6 +15,10 @@
   Model và URL compatible lưu trong `settings.cloudConfig` của user. Key trống → xoá.
 - `cloudBackend(userId, provider, model)` / `localBackend()` trả về `BackendConfig { kind, baseUrl, apiKey, model }`.
   Assignment Cloud dùng key của **chủ assignment**.
+- **Gửi request:** `postCompletion(backend, body, signal)` gửi `/chat/completions` và trả `choices[0].message` — dùng chung cho
+  `chat()` và khung agent (`src/main/agents/llm.ts`, tool calling). `completionBody(backend, maxTokens)` = phần body chung
+  (`model`, `temperature 0`, `max_tokens`, `stream: false`, Local thêm `repeat_penalty 1.1`); `messageText(content)` đọc chữ
+  (chuỗi hoặc mảng part). Body có `tools` mà nhà cung cấp trả 4xx nhắc tới tool / function / jinja → lỗi "không hỗ trợ gọi công cụ".
 - **`chat(backend, messages, opts)`:**
   - `temperature 0`; Local thêm `repeat_penalty 1.1`.
   - JSON schema: Local / OpenAI / Gemini dùng `response_format json_schema`; compatible dùng `json_object`;
@@ -24,7 +28,7 @@
     tiếng Việt dễ hiểu.
   - Cloud đi qua `netFetch` (ghi nhật ký mạng).
 - **Context:** ngân sách prompt của Cloud = `contextSize` trong AI Models (mặc định 32K, chọn được 100K / 150K / 200K —
-  `effectiveContext('cloud', …)`), không còn cố định 120K. Chọn ≤ giới hạn context của model (vd gpt-4o-mini 128K),
+  `effectiveContext('cloud', …)`, tối đa `MAX_CONTEXT` 200K — cùng mức trần với Local AI), không còn cố định 120K. Chọn ≤ giới hạn context của model (vd gpt-4o-mini 128K),
   vượt → nhà cung cấp báo lỗi.
 - **Test kết nối:** gửi "Reply with the single word: OK".
 - **Quyền riêng tư:** assignment Cloud bắt buộc tick đồng ý gửi code ra ngoài (`cloudConsent`); `anonymizeCloud` (mặc

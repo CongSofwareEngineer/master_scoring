@@ -101,25 +101,30 @@ export interface ChatOptions {
   signal?: AbortSignal
 }
 
-export async function chat(backend: BackendConfig, messages: ChatMessage[], opts: ChatOptions = {}): Promise<string> {
-  const body: any = {
+// Phần chung của mọi body /chat/completions (chat thường và agent gọi công cụ)
+export function completionBody(backend: BackendConfig, maxTokens = 1500): Record<string, any> {
+  const body: Record<string, any> = {
     model: backend.model,
-    messages,
     temperature: 0,
-    max_tokens: opts.maxTokens ?? 1500,
+    max_tokens: maxTokens,
     stream: false
   }
   // Model nhỏ ở temperature 0 dễ lặp một câu mãi tới hết max_tokens → JSON bị cắt cụt
   if (backend.kind === 'local') body.repeat_penalty = 1.1
-  if (opts.jsonSchema) {
-    if (backend.kind === 'local') {
-      body.response_format = { type: 'json_schema', json_schema: { name: 'grading', schema: opts.jsonSchema } }
-    } else if (backend.provider === 'openai' || backend.provider === 'gemini') {
-      body.response_format = { type: 'json_schema', json_schema: { name: 'grading', schema: opts.jsonSchema } }
-    } else if (backend.provider === 'compatible') {
-      body.response_format = { type: 'json_object' }
-    }
-  }
+  return body
+}
+
+// `content` của message có thể là chuỗi hoặc mảng part [{type:'text',text}]
+export function messageText(content: unknown): string | null {
+  if (typeof content === 'string') return content
+  if (Array.isArray(content)) return content.map((c: any) => (typeof c?.text === 'string' ? c.text : '')).join('')
+  return null
+}
+
+// Gửi một request /chat/completions tới Local hoặc Cloud, trả về `choices[0].message` (chuẩn OpenAI).
+// Xử lý chung: header theo nhà cung cấp, timeout, huỷ, 429 thử lại, bỏ response_format khi không hỗ trợ.
+export async function postCompletion(backend: BackendConfig, payload: Record<string, any>, signal?: AbortSignal): Promise<any> {
+  const body = { ...payload }
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (backend.apiKey) headers.Authorization = `Bearer ${backend.apiKey}`
   if (backend.provider === 'anthropic') {
@@ -134,13 +139,13 @@ export async function chat(backend: BackendConfig, messages: ChatMessage[], opts
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), timeoutMs)
     const onAbort = (): void => ctrl.abort()
-    opts.signal?.addEventListener('abort', onAbort)
+    signal?.addEventListener('abort', onAbort)
     let res: Response
     try {
       const init: RequestInit = { method: 'POST', headers, body: JSON.stringify(body), signal: ctrl.signal }
       res = backend.kind === 'local' ? await fetch(url, init) : await netFetch(url, init, `Cloud AI (${backend.label})`)
     } catch (e: any) {
-      if (opts.signal?.aborted) throw new AiError('Đã huỷ', 'timeout')
+      if (signal?.aborted) throw new AiError('Đã huỷ', 'timeout')
       if (ctrl.signal.aborted) throw new AiError('Quá thời gian chờ phản hồi từ AI', 'timeout')
       throw new AiError(
         backend.kind === 'local' ? 'Không kết nối được Local AI: ' + e.message : 'Không có mạng hoặc không kết nối được máy chủ: ' + e.message,
@@ -148,7 +153,7 @@ export async function chat(backend: BackendConfig, messages: ChatMessage[], opts
       )
     } finally {
       clearTimeout(timer)
-      opts.signal?.removeEventListener('abort', onAbort)
+      signal?.removeEventListener('abort', onAbort)
     }
     if (res.status === 429 && attempt <= 5) {
       // Rate limit: chờ theo Retry-After hoặc lùi dần
@@ -162,17 +167,37 @@ export async function chat(backend: BackendConfig, messages: ChatMessage[], opts
       continue
     }
     const text = await res.text()
-    if (!res.ok) throw describeHttp(res.status, text, backend.label)
+    if (!res.ok) {
+      if (body.tools && res.status < 500 && /tool|function|jinja/i.test(text))
+        throw new AiError(`Model / nhà cung cấp AI này không hỗ trợ gọi công cụ (tool calling) (HTTP ${res.status}). ${text.slice(0, 300)}`, 'bad_request')
+      throw describeHttp(res.status, text, backend.label)
+    }
+    let message: any
     try {
-      const json = JSON.parse(text)
-      const content = json?.choices?.[0]?.message?.content
-      if (typeof content === 'string') return content
-      if (Array.isArray(content)) return content.map((c: any) => c?.text ?? '').join('')
-      throw new Error('no content')
+      message = JSON.parse(text)?.choices?.[0]?.message
     } catch {
-      throw new AiError('Phản hồi AI không đúng định dạng: ' + text.slice(0, 200), 'server')
+      /* xử lý bên dưới */
+    }
+    if (!message || typeof message !== 'object') throw new AiError('Phản hồi AI không đúng định dạng: ' + text.slice(0, 200), 'server')
+    return message
+  }
+}
+
+export async function chat(backend: BackendConfig, messages: ChatMessage[], opts: ChatOptions = {}): Promise<string> {
+  const body: Record<string, any> = { ...completionBody(backend, opts.maxTokens), messages }
+  if (opts.jsonSchema) {
+    if (backend.kind === 'local') {
+      body.response_format = { type: 'json_schema', json_schema: { name: 'grading', schema: opts.jsonSchema } }
+    } else if (backend.provider === 'openai' || backend.provider === 'gemini') {
+      body.response_format = { type: 'json_schema', json_schema: { name: 'grading', schema: opts.jsonSchema } }
+    } else if (backend.provider === 'compatible') {
+      body.response_format = { type: 'json_object' }
     }
   }
+  const message = await postCompletion(backend, body, opts.signal)
+  const content = messageText(message.content)
+  if (content === null) throw new AiError('Phản hồi AI không đúng định dạng: ' + JSON.stringify(message).slice(0, 200), 'server')
+  return content
 }
 
 export async function testConnection(backend: BackendConfig): Promise<string> {

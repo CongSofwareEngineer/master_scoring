@@ -5,8 +5,8 @@ import { evaluatePenalty, normalizePolicy } from '@shared/aiPolicy'
 import { round2 } from '@shared/constants'
 import { translate } from '@shared/i18n'
 import { REPORT_EXTS, SUPPORTED_EXTS } from '@shared/submissionName'
-import type { Assignment, CloudProvider, Criterion, Lang, TechProfile } from '@shared/types'
-import { cloudBackend, getCloudConfig, saveCloudConfig, testConnection } from './ai/client'
+import type { Assignment, CloudProvider, Criterion, DataBackendChoice, Lang, TechProfile } from '@shared/types'
+import { cloudBackend, getCloudConfig, localBackend, saveCloudConfig, testConnection } from './ai/client'
 import { aiStatus, ensureLocalStarted, installAndUse, pauseModelDownload, restartLocal, switchModel } from './ai/manager'
 import { getLocalState, stopLocal } from './ai/llama'
 import { currentDownload, deleteModel, hasPartial, importModelFile, listModels } from './ai/models'
@@ -15,6 +15,9 @@ import { findForge, findSolc } from './analysis/solidity'
 import { auth, changePassword, defaultAccountHint, getCurrentUser, requireUser, setCurrentUser, updateProfile } from './auth'
 import { backupTo, cleanWork, restoreFrom, storageUsage } from './backup'
 import { dashboardData } from './dashboard'
+import { askData, cancelAsk } from './datachat/ask'
+import { DATA_EXTS } from './datachat/load'
+import { clearHistory, closeSession, openFiles, preview, removeFile, sessionState } from './datachat/session'
 import { emit } from './events'
 import { getHardware } from './hardware'
 import { parseClassList } from './importer/classlist'
@@ -99,7 +102,11 @@ export function registerIpc(): void {
     void ensureLocalStarted().then(() => tryAutoResume(u.id))
     return u
   })
-  handle('auth:logout', () => setCurrentUser(null))
+  handle('auth:logout', () => {
+    const u = getCurrentUser()
+    if (u) closeSession(u.id) // dữ liệu Trợ lý dữ liệu chỉ nằm trong RAM của phiên đăng nhập
+    setCurrentUser(null)
+  })
   handle('auth:changePassword', (oldPw: string, newPw: string) => changePassword(requireUser().id, oldPw, newPw))
   handle('auth:updateProfile', (username: string, displayName: string) => updateProfile(requireUser().id, username, displayName))
   handle('auth:defaultHint', () => defaultAccountHint())
@@ -437,6 +444,43 @@ export function registerIpc(): void {
   })
 
   // ───── Hệ thống ─────
+  // ───── Trợ lý dữ liệu (chat với file Excel / CSV) ─────
+  handle('data:state', () => sessionState(requireUser().id))
+  handle('data:open', async () => {
+    const u = requireUser()
+    const r = await dialog.showOpenDialog(win()!, {
+      title: translate(getSettings(u.id).lang, 'Chọn file dữ liệu (Excel / CSV)'),
+      filters: [{ name: 'Excel / CSV', extensions: DATA_EXTS }],
+      properties: ['openFile', 'multiSelections']
+    })
+    if (r.canceled || !r.filePaths.length) return null
+    return openFiles(u.id, r.filePaths)
+  })
+  handle('data:remove', (fileId: string) => removeFile(requireUser().id, String(fileId)))
+  handle('data:closeAll', () => {
+    const u = requireUser()
+    closeSession(u.id)
+    return sessionState(u.id)
+  })
+  handle('data:clearChat', () => clearHistory(requireUser().id))
+  handle('data:preview', (table: string, offset: number, limit: number, query?: { search?: string; column?: string }) =>
+    preview(requireUser().id, String(table), Number(offset), Number(limit), { search: query?.search, column: query?.column })
+  )
+  handle('data:ask', async (question: string, choice: DataBackendChoice) => {
+    const u = requireUser()
+    if (typeof question !== 'string' || question.length > 4000) throw new Error('Câu hỏi không hợp lệ (tối đa 4000 ký tự)')
+    let backend
+    if (choice === 'local') {
+      await ensureLocalStarted()
+      backend = localBackend()
+    } else if (choice === 'gemini' || choice === 'openai' || choice === 'anthropic' || choice === 'compatible') {
+      backend = cloudBackend(u.id, choice)
+    } else throw new Error('Chưa chọn AI')
+    const lang = getSettings(u.id).lang
+    return askData(u.id, question, backend, lang, (msg) => emit('data:progress', { userId: u.id, msg }))
+  })
+  handle('data:cancel', () => cancelAsk(requireUser().id))
+
   handle('system:netlog', () => listNetLog())
   handle('system:clearNetlog', () => clearNetLog())
   handle('system:storage', () => storageUsage())

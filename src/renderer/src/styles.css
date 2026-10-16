@@ -1606,3 +1606,415 @@ pre.output {
   text-overflow: ellipsis;
   vertical-align: bottom;
 }
+
+/* ───────────── Trợ lý dữ liệu (chat với Excel / CSV) ───────────── */
+.datachat {
+  display: grid;
+  /* --dc-chat-w: độ rộng kéo được; luôn chừa ≥ 320px cho bảng dữ liệu */
+  grid-template-columns: minmax(0, 1fr) min(var(--dc-chat-w, clamp(360px, 34vw, 480px)), calc(100% - 320px));
+  height: 100%;
+}
+.datachat.chat-collapsed {
+  grid-template-columns: minmax(0, 1fr) 44px;
+}
+.datachat.chat-collapsed .dc-chat {
+  display: none;
+}
+.datachat.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+.dc-chat-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 5;
+}
+.dc-chat-resizer:hover,
+.datachat.resizing .dc-chat-resizer {
+  background: var(--primary);
+  opacity: 0.5;
+}
+.dc-chat-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 14px;
+  border-left: 1px solid var(--border);
+  background: var(--bg-2);
+}
+.dc-rail-bot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--ai-soft);
+  color: var(--ai);
+  cursor: pointer;
+}
+.dc-data {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  padding: 20px 20px 16px 24px;
+}
+.dc-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.dc-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 280px;
+  height: 28px;
+  padding: 0 2px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+.dc-file svg {
+  flex: 0 0 auto;
+  color: var(--success);
+}
+.dc-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.dc-table .table-wrap.grow {
+  flex: 1;
+  min-height: 0;
+}
+.dc-cell {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dc-seg {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.dc-seg button {
+  height: 26px;
+  padding: 0 10px;
+  border: none;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.dc-seg button + button {
+  border-left: 1px solid var(--border-strong);
+}
+.dc-seg button.active {
+  background: var(--primary-soft);
+  color: var(--text);
+}
+.dc-chat {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--border);
+  background: var(--bg-2);
+}
+.dc-chat-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px 10px;
+}
+.dc-messages {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.dc-suggest {
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color var(--dur);
+}
+.dc-suggest:hover {
+  border-color: var(--ai);
+}
+.dc-msg {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.dc-msg.user {
+  flex-direction: row-reverse;
+}
+.dc-avatar {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+}
+.dc-msg.assistant .dc-avatar {
+  background: var(--ai-soft);
+  color: var(--ai);
+}
+.dc-bubble {
+  min-width: 0;
+  max-width: calc(100% - 32px);
+  padding: 8px 11px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+.dc-msg.user .dc-bubble {
+  background: var(--primary-soft);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+.dc-msg.assistant .dc-bubble {
+  flex: 1;
+}
+.dc-bubble.error {
+  border-color: rgba(239, 68, 68, 0.45);
+}
+.dc-md-p {
+  margin: 0 0 6px;
+}
+.dc-md-p:last-child {
+  margin-bottom: 0;
+}
+.dc-md-h {
+  font-weight: 600;
+  margin: 8px 0 4px;
+}
+.dc-md-list {
+  margin: 0 0 6px;
+  padding-left: 20px;
+}
+.dc-md pre,
+.dc-query pre {
+  margin: 4px 0;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+.dc-md .table th,
+.dc-md .table td,
+.dc-query .table th,
+.dc-query .table td {
+  padding: 5px 8px;
+  font-size: 12px;
+}
+.dc-queries {
+  margin-top: 8px;
+  font-size: 12.5px;
+}
+.dc-queries summary {
+  cursor: pointer;
+  color: var(--text-2);
+}
+.dc-query {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+.dc-composer {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  padding: 10px 14px 14px;
+  border-top: 1px solid var(--border);
+}
+.dc-composer .textarea {
+  flex: 1;
+  resize: none;
+  min-height: 40px;
+  max-height: 160px;
+}
+.dc-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 280px;
+  max-width: 100%;
+}
+.dc-search > svg {
+  position: absolute;
+  left: 9px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.dc-search .input {
+  width: 100%;
+  padding-left: 30px;
+  padding-right: 30px;
+}
+.dc-search .btn {
+  position: absolute;
+  right: 2px;
+}
+.dc-table mark {
+  background: rgba(245, 158, 11, 0.35);
+  color: var(--text);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+.dc-table th.dc-col-hit {
+  color: var(--warning);
+}
+
+/* Biểu đồ trong câu trả lời Trợ lý dữ liệu — bảng màu dark đã kiểm tra (CVD + tương phản ≥ 3:1 trên --surface) */
+:root {
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-other: #64748b;
+}
+.dc-chart-card {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dc-chart {
+  position: relative;
+}
+.dc-chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.dc-chart text {
+  fill: var(--text-2);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.dc-chart text.val {
+  fill: var(--text);
+  font-weight: 600;
+}
+.dc-chart .grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+.dc-chart .base {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+}
+.dc-chart .cross {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+}
+.dc-chart .hit {
+  fill: transparent;
+}
+.dc-chart .hit:hover {
+  fill: rgba(148, 163, 184, 0.06);
+}
+.dc-chart .dot {
+  stroke: var(--bg-2);
+  stroke-width: 2;
+}
+.dc-chart .slice {
+  stroke: var(--bg-2);
+  stroke-width: 2;
+  cursor: default;
+}
+.dc-chart .slice:hover {
+  opacity: 0.85;
+}
+.dc-chart .seg {
+  stroke: var(--bg-2);
+  stroke-width: 1;
+}
+.dc-chart text.axis-title {
+  fill: var(--text-muted);
+  font-size: 11px;
+}
+.dc-swatch.line {
+  height: 3px;
+  border-radius: 2px;
+}
+.dc-pie {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.modal .dc-pie svg {
+  height: auto;
+}
+.dc-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.dc-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+.dc-tip {
+  position: absolute;
+  z-index: 5;
+  min-width: 150px;
+  max-width: 240px;
+  padding: 7px 9px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+  pointer-events: none;
+  transform: translateY(-100%);
+}
+.dc-tip-title {
+  font-weight: 600;
+  margin-bottom: 3px;
+  overflow-wrap: anywhere;
+}

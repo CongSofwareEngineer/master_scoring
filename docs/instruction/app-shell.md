@@ -23,6 +23,8 @@
   - Kéo mép phải (`.sidebar-resizer`) để đổi độ rộng 180–420px, nhấp đúp về mặc định 220px. Độ rộng lưu
     `localStorage['sidebarWidth']` (theo máy, không theo user). CSS dùng biến `--sidebar-w`.
   - Badge `done/total` ở mục Hàng đợi khi đang chấm.
+  - Nhóm mục: chấm bài (group 0) → công cụ riêng (group 2: **Phân tích dữ liệu**, xem `data-chat.md`) → cấu hình
+    (group 1: Tech Profiles, AI Models) → Cài đặt, Hướng dẫn.
 - **Top bar:** logo + tên app + version (`__APP_VERSION__`, inject từ `package.json` qua `define` trong
   `electron.vite.config.ts`), chọn assignment hiện tại, chỉ báo trạng thái AI, menu tài khoản.
 - **Sự kiện nền:** `App.tsx` lắng nghe `ai:local`, `ai:cloud-changed`, `queue:state`, `ai:runtime-progress` để
@@ -32,7 +34,7 @@
 
 - Trang mới: thêm vào type `Page` trong `store.ts`, `NAV` trong `Shell.tsx`, và nhánh render trong `App.tsx`.
 - `__APP_VERSION__` khai báo kiểu trong `env.d.ts`; chỉ có ở renderer.
-- Banner nhắc đổi mật khẩu mặc định hiện ở mọi trang trừ Code Review.
+- Banner nhắc đổi mật khẩu mặc định hiện ở mọi trang trừ Code Review và Phân tích dữ liệu (2 trang dạng toàn màn hình).
 
 ## Test
 

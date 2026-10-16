@@ -188,6 +188,8 @@ async function launch(modelId: string, variant: Variant, gpuLayers: number): Pro
   const s = getSettings(null)
   port = await freePort()
   const args = ['-m', modelPath(modelId), '--host', '127.0.0.1', '--port', String(port), '-c', String(effectiveContext('local', s.contextSize)), '-np', '1']
+  // Chat template jinja của model → llama-server nhận `tools` và trả `tool_calls` (agent dữ liệu cần); bản mới đã bật mặc định
+  args.push('--jinja')
   const threads = s.threads > 0 ? s.threads : Math.max(1, Math.min(8, os.cpus().length - 1))
   args.push('-t', String(threads))
   args.push('-ngl', String(gpuLayers))

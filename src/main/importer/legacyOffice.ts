@@ -359,7 +359,8 @@ function rkValue(v: number): number {
   return v & 1 ? n / 100 : n
 }
 
-export function xlsToText(cfb: Cfb): OfficeText {
+// Đọc các sheet .xls thành bảng chuỗi (dùng cho chấm báo cáo và Trợ lý dữ liệu)
+export function xlsSheets(cfb: Cfb): { name: string; rows: string[][] }[] {
   const wb = cfb.streams.get('Workbook') ?? cfb.streams.get('WORKBOOK')
   if (!wb) {
     if (cfb.streams.has('Book')) throw new OfficeError('File Excel 5.0 / 95 quá cũ — cần lưu lại bằng Excel mới hơn')
@@ -443,8 +444,11 @@ export function xlsToText(cfb: Cfb): OfficeText {
     }
     pendingFormula = null
   }
-  const out = sheets.map((s) => ({ name: s.name, rows: Array.from(s.rows, (r) => Array.from(r ?? [], (c) => c ?? '')) }))
-  return sheetsToText(out, 0)
+  return sheets.map((s) => ({ name: s.name, rows: Array.from(s.rows, (r) => Array.from(r ?? [], (c) => c ?? '')) }))
+}
+
+export function xlsToText(cfb: Cfb): OfficeText {
+  return sheetsToText(xlsSheets(cfb), 0)
 }
 
 // ───────────── PowerPoint 97-2003 (.ppt) ─────────────

@@ -8,3 +8,4 @@
 - 2026-10-06 | Sửa | Toast tiến trình runtime AI: đổi kiểu toast `ai:runtime-progress` từ info sang success — chỉ báo khi tải xong, đỡ nhiễu
 - 2026-10-06 | Thêm mới | Hiển thị version trên top bar: inject `__APP_VERSION__` từ package.json qua electron.vite.config.ts — biết đang chạy bản build nào
 - 2026-10-06 | Thêm mới | Cửa sổ app & khung giao diện: tạo tài liệu instruction mô tả hiện trạng — áp dụng quy tắc docs trong CLAUDE.md
+- 2026-10-16 | Sửa | Điều hướng trang: thêm nhóm sidebar "công cụ riêng" với mục Phân tích dữ liệu (`datachat`), ẩn banner mật khẩu mặc định ở trang này — chức năng chat với Excel / CSV không gắn assignment

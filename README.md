@@ -5,6 +5,7 @@ Mỗi assignment chọn loại bài **Chấm code** hoặc **Chấm báo cáo (W
 [docs/instruction/report-grading.md](docs/instruction/report-grading.md)). Context AI chọn trong AI Models: mặc định 32K,
 tới 200K cho Cloud AI (Local AI tối đa 32K).
 Trong Code Review, bài báo cáo **.docx / .xlsx** xem được kiểu Office (nút **Văn bản / Xem trước**): Word giữ bố cục gần như bản gốc, Excel hiện đúng bảng / sheet / định dạng.
+Công cụ riêng **Phân tích dữ liệu** (sidebar): mở file Excel / CSV (.xlsx .xls .csv .tsv) rồi chat với **trợ lý kế toán AI** — hỏi tổng tiền, % trung bình, top, theo tháng…; mọi con số được tính bằng SQL trên toàn bộ dữ liệu và xem lại được truy vấn (xem [docs/instruction/data-chat.md](docs/instruction/data-chat.md)).
 Thiết kế chi tiết: [Master_Scoring_Design.md](Master_Scoring_Design.md).
 
 Công nghệ: **Electron + React + TypeScript** (phương án thay thế trong mục 23 của design — dev được trên macOS/Windows,
@@ -91,6 +92,8 @@ src/main/        Electron main process
   grading/       prompt + JSON schema, pipeline chấm 1 SV, hàng đợi tuần tự (pause/resume/cancel, tiếp tục sau khi tắt app)
   integrity/     fingerprint winnowing (kiểu MOSS), so sánh cặp, cluster
   reports/       Excel (exceljs), CSV, PDF (printToPDF)
+  agents/        khung agent AI tool calling (base / llm / runAgent, registry agents/ + tools/) — dùng cho Trợ lý dữ liệu
+  datachat/      Trợ lý dữ liệu: đọc Excel / CSV → SQLite trong RAM, AI kế toán hỏi đáp bằng SQL chỉ-đọc
 src/preload/     cầu nối IPC an toàn (contextIsolation + sandbox)
 src/renderer/    React UI (dark theme, CodeMirror 6 read-only, biểu đồ SVG)
 ```

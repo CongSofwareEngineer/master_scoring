@@ -469,4 +469,101 @@ export interface ReportColumn {
   label: string
 }
 
+// ───── Trợ lý dữ liệu (chat với file Excel / CSV) ─────
+
+export type DataColumnType = 'number' | 'date' | 'text'
+
+export interface DataColumn {
+  name: string // tên cột SQL
+  label: string // tiêu đề gốc trong file
+  type: DataColumnType
+  percent: boolean // giá trị gốc dạng % (15% → 15)
+  filled: number // số ô có dữ liệu
+  distinct: number
+  sum?: number
+  avg?: number
+  min?: number | string
+  max?: number | string
+  top?: { value: string; count: number }[]
+}
+
+export interface DataNote {
+  text: string // chuỗi tiếng Việt (khoá i18n), {key} thay bằng vars
+  vars?: Record<string, string>
+}
+
+export interface DataTable {
+  name: string // tên bảng SQL
+  label: string // tên file / sheet hiển thị
+  rowCount: number
+  truncated: boolean
+  columns: DataColumn[]
+  notes: DataNote[]
+}
+
+export interface DataFile {
+  id: string
+  name: string
+  path: string
+  tables: DataTable[]
+}
+
+export type DataBackendChoice = 'local' | CloudProvider
+
+export interface DataQuery {
+  sql: string
+  purpose: string
+  columns: string[]
+  rows: (string | number | null)[][]
+  total: number // số dòng trả về (trước khi cắt hiển thị)
+  error?: string
+}
+
+export type DataChartType =
+  | 'bar' // cột đứng (nhiều chuỗi = cột nhóm)
+  | 'hbar' // thanh ngang
+  | 'stacked' // cột chồng
+  | 'hstacked' // thanh ngang chồng
+  | 'line' // đường
+  | 'area' // vùng (đường tô nền gradient)
+  | 'multiaxis' // đường 2 trục y (chuỗi 1 trục trái, chuỗi 2 trục phải)
+  | 'combo' // kết hợp: chuỗi 1 cột, các chuỗi sau đường
+  | 'pie' // tròn đặc
+  | 'doughnut' // tròn rỗng (donut)
+  | 'polar' // vùng cực (polar area)
+  | 'radar' // mạng nhện
+  | 'scatter' // phân tán (x, y)
+  | 'bubble' // bong bóng (x, y, kích thước)
+  | 'table'
+
+// Biểu đồ / bảng trong câu trả lời: AI chỉ khai báo loại + SQL, số liệu do app chạy SQL lấy
+export interface DataChart extends DataQuery {
+  type: DataChartType
+  title: string
+}
+
+export interface DataChatTurn {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  ts: string
+  queries?: DataQuery[]
+  charts?: DataChart[]
+  backend?: string
+  error?: boolean
+}
+
+export interface DataChatState {
+  files: DataFile[]
+  history: DataChatTurn[]
+  busy: boolean
+}
+
+export interface DataPreview {
+  columns: string[]
+  rows: (string | number | null)[][]
+  rowIds: number[] // số thứ tự dòng dữ liệu (1 = dòng đầu sau tiêu đề)
+  total: number // số dòng (sau khi lọc nếu có từ khoá)
+}
+
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string }

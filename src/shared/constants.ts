@@ -56,15 +56,14 @@ export const CLOUD_PROVIDERS: Record<CloudProvider, { name: string; baseUrl: str
   }
 }
 
-// Context (token) chọn trong AI Models. Cloud AI dùng đúng giá trị chọn; Local AI tối đa LOCAL_MAX_CONTEXT
-// (context huấn luyện của Qwen2.5-Coder — lớn hơn chỉ tốn RAM mà model không đọc tốt hơn).
+// Context (token) chọn trong AI Models — dùng đúng giá trị chọn cho cả Local AI và Cloud AI, tối đa MAX_CONTEXT (200K).
 export const CONTEXT_OPTIONS = [8192, 16384, 32768, 102400, 153600, 204800]
 export const DEFAULT_CONTEXT = 32768
-export const LOCAL_MAX_CONTEXT = 32768
+export const MAX_CONTEXT = 204800
 
-export function effectiveContext(kind: 'local' | 'cloud', contextSize: number): number {
+export function effectiveContext(_kind: 'local' | 'cloud', contextSize: number): number {
   const n = Number(contextSize) > 0 ? Number(contextSize) : DEFAULT_CONTEXT
-  return kind === 'local' ? Math.min(n, LOCAL_MAX_CONTEXT) : n
+  return Math.min(n, MAX_CONTEXT)
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {

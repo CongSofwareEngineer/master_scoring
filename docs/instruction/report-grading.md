@@ -52,7 +52,7 @@
   (`0x13…0x14…0x15`) bỏ mã, giữ kết quả. PAPX (FKP) cho từng đoạn: style (istd → heading theo sti 1–9 / Title / tên
   "heading N"), outline level, trong bảng / cuối hàng (`0x07` = hết ô / hết hàng), danh sách. Hình = ký tự `0x01`/`0x08`.
   Số trang từ `SummaryInformation`. Có mật khẩu → lỗi; Word 6/95 (nFib < 0xC0) → lỗi "quá cũ".
-- **Excel (.xlsx `xlsxToText`, .xls `xlsToText`):** mỗi sheet → `# Sheet: <tên>` (là 1 heading, 1 bảng) + mỗi hàng
+- **Excel (.xlsx `xlsxToText`, .xls `xlsToText` = `sheetsToText(xlsSheets(...))`):** mỗi sheet → `# Sheet: <tên>` (là 1 heading, 1 bảng) + mỗi hàng
   `| ô | ô |` (bỏ hàng trống, ô trống cuối hàng; tối đa 3000 hàng / sheet, còn lại ghi "(… đã bỏ N hàng)"). Số hiển thị
   giá trị thô (ngày tháng = số serial), công thức lấy giá trị đã tính. .xlsx: `workbook.xml` + rels + `sharedStrings` +
   `worksheets/*`. .xls (BIFF8): BOUNDSHEET, SST (đọc chuỗi qua nhiều CONTINUE), LABELSST / LABEL / NUMBER / RK /

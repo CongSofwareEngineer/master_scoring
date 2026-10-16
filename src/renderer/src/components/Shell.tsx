@@ -15,6 +15,7 @@ import {
   LogOut,
   Settings,
   ShieldAlert,
+  Sheet,
   Users
 } from 'lucide-react'
 import { CLOUD_PROVIDERS } from '@shared/constants'
@@ -33,6 +34,7 @@ const NAV: { page: Page; label: string; icon: typeof LayoutDashboard; group: num
   { page: 'review', label: 'Code Review', icon: CodeXml, group: 0 },
   { page: 'integrity', label: 'Liêm chính', icon: ShieldAlert, group: 0 },
   { page: 'reports', label: 'Báo cáo', icon: FileChartColumn, group: 0 },
+  { page: 'datachat', label: 'Phân tích dữ liệu', icon: Sheet, group: 2 },
   { page: 'profiles', label: 'Tech Profiles', icon: Layers, group: 1 },
   { page: 'models', label: 'AI Models', icon: Bot, group: 1 }
 ]
@@ -76,6 +78,8 @@ export function Sidebar(): JSX.Element {
   return (
     <nav className="sidebar">
       {NAV.filter((n) => n.group === 0).map(item)}
+      <div className="nav-sep" />
+      {NAV.filter((n) => n.group === 2).map(item)}
       <div className="nav-sep" />
       {NAV.filter((n) => n.group === 1).map(item)}
       <div className="nav-sep" />

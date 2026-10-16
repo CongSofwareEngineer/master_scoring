@@ -39,6 +39,7 @@ Quy tắc: xem [../CLAUDE.md](../CLAUDE.md).
 | Biên dịch & chạy test Solidity | [instruction/solidity-compile-test.md](instruction/solidity-compile-test.md) | [changelog/solidity-compile-test.md](changelog/solidity-compile-test.md) |
 | Local AI (llama-server + model GGUF) | [instruction/local-ai.md](instruction/local-ai.md) | [changelog/local-ai.md](changelog/local-ai.md) |
 | Cloud AI & client gọi AI | [instruction/cloud-ai.md](instruction/cloud-ai.md) | [changelog/cloud-ai.md](changelog/cloud-ai.md) |
+| Kiến trúc agent AI (tool calling: agents / tools / vòng gọi công cụ) | [instruction/ai-agents.md](instruction/ai-agents.md) | [changelog/ai-agents.md](changelog/ai-agents.md) |
 
 ## Liêm chính & kết quả
 
@@ -51,3 +52,9 @@ Quy tắc: xem [../CLAUDE.md](../CLAUDE.md).
 | Dashboard thống kê | [instruction/dashboard.md](instruction/dashboard.md) | [changelog/dashboard.md](changelog/dashboard.md) |
 | Xuất báo cáo (Excel / CSV / PDF) | [instruction/reports.md](instruction/reports.md) | [changelog/reports.md](changelog/reports.md) |
 | Trang Hướng dẫn sử dụng | [instruction/help-page.md](instruction/help-page.md) | [changelog/help-page.md](changelog/help-page.md) |
+
+## Công cụ riêng
+
+| Logic | Instruction | Changelog |
+| --- | --- | --- |
+| Trợ lý dữ liệu — chat với file Excel / CSV (Kế toán AI) | [instruction/data-chat.md](instruction/data-chat.md) | [changelog/data-chat.md](changelog/data-chat.md) |

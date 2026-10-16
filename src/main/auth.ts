@@ -1,8 +1,12 @@
 // Xác thực tài khoản local, offline. Tách thành AuthProvider để sau này thay bằng đăng nhập qua server.
 // Lần chạy đầu tiên tự tạo tài khoản mặc định admin / admin (đổi được trong Cài đặt → Tài khoản).
 import bcrypt from 'bcryptjs'
+import { safeStorage } from 'electron'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { join } from 'path'
 import type { User } from '@shared/types'
 import { get, nowIso, run } from './db'
+import { paths } from './paths'
 
 export const DEFAULT_USERNAME = 'admin'
 export const DEFAULT_PASSWORD = 'admin'
@@ -76,8 +80,45 @@ export function defaultAccountHint(): string | null {
 
 let currentUser: User | null = null
 
+// Ghi nhớ đăng nhập: lưu id người dùng (mã hoá bằng safeStorage — DPAPI / Keychain) vào data/session.bin.
+// Mở lại app sẽ tự đăng nhập; chỉ đăng xuất (hoặc khôi phục backup) mới xoá phiên.
+function sessionFile(): string {
+  return join(paths.data, 'session.bin')
+}
+
+function saveSession(userId: number | null): void {
+  try {
+    if (userId === null || !safeStorage.isEncryptionAvailable()) {
+      rmSync(sessionFile(), { force: true })
+      return
+    }
+    writeFileSync(sessionFile(), safeStorage.encryptString(JSON.stringify({ userId })))
+  } catch {
+    /* không ghi được phiên thì lần sau đăng nhập lại như cũ */
+  }
+}
+
 export function setCurrentUser(u: User | null): void {
   currentUser = u
+  saveSession(u?.id ?? null)
+}
+
+// Gọi lúc khởi động: khôi phục phiên đã ghi nhớ nếu tài khoản vẫn tồn tại.
+export function restoreSession(): User | null {
+  try {
+    if (!existsSync(sessionFile()) || !safeStorage.isEncryptionAvailable()) return null
+    const { userId } = JSON.parse(safeStorage.decryptString(readFileSync(sessionFile())))
+    const row = get<UserRow>('SELECT * FROM users WHERE id = ?', [Number(userId)])
+    if (!row) {
+      saveSession(null)
+      return null
+    }
+    currentUser = toUser(row)
+    return currentUser
+  } catch {
+    saveSession(null)
+    return null
+  }
 }
 
 export function getCurrentUser(): User | null {

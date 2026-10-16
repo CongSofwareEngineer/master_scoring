@@ -19,6 +19,7 @@ import { TechProfilesPage } from './pages/TechProfiles'
 import { AiModelsPage } from './pages/AiModels'
 import { SettingsPage } from './pages/Settings'
 import { HelpPage } from './pages/Help'
+import { DataChatPage } from './pages/DataChat'
 
 type Phase = 'loading' | 'auth' | 'setup' | 'main'
 
@@ -213,7 +214,7 @@ function Main(): JSX.Element {
           />
         )}
         <main className="content">
-          {page !== 'review' && <DefaultPasswordBanner />}
+          {page !== 'review' && page !== 'datachat' && <DefaultPasswordBanner />}
           {page === 'dashboard' && <DashboardPage />}
           {page === 'assignments' && <AssignmentsPage />}
           {page === 'students' && <StudentsPage />}
@@ -225,6 +226,7 @@ function Main(): JSX.Element {
           {page === 'models' && <AiModelsPage />}
           {page === 'settings' && <SettingsPage />}
           {page === 'help' && <HelpPage />}
+          {page === 'datachat' && <DataChatPage />}
         </main>
       </div>
     </div>

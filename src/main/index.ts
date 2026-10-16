@@ -2,9 +2,10 @@ import { app, BrowserWindow, Menu, nativeTheme, screen, shell } from 'electron'
 import { appendFileSync } from 'fs'
 import { join } from 'path'
 import { cleanupStale, stopLocalSync } from './ai/llama'
-import { ensureDefaultAccount } from './auth'
+import { ensureDefaultAccount, restoreSession } from './auth'
+import { ensureLocalStarted } from './ai/manager'
 import { flush, openDb } from './db'
-import { recoverOnStartup } from './grading/queue'
+import { recoverOnStartup, tryAutoResume } from './grading/queue'
 import { registerIpc } from './ipc'
 import { paths } from './paths'
 
@@ -96,6 +97,9 @@ app.whenReady().then(async () => {
   await cleanupStale()
   recoverOnStartup()
   registerIpc()
+  // Ghi nhớ đăng nhập: có phiên cũ → vào thẳng app, khởi động Local AI và tiếp tục hàng đợi như khi đăng nhập
+  const remembered = restoreSession()
+  if (remembered) void ensureLocalStarted().then(() => tryAutoResume(remembered.id))
 
   if (isMac) {
     Menu.setApplicationMenu(
