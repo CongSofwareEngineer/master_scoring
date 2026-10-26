@@ -18,6 +18,10 @@
   (`REPORT_EXTS`: .docx .doc .xlsx .xls .pptx .ppt .rtf, vd `<HọTên>_<MSSV>.docx`), bỏ file khoá `~$*`; kiểm tra bằng
   `quickCheckOffice` (đọc theo nội dung file, hỏng / mật khẩu / không có chữ → `broken`). Assignment code bỏ qua các
   file này. Ghi chú sai tên ghi đuôi theo loại bài. Xem [report-grading.md](report-grading.md).
+- **Nguồn bài nộp (`Assignment.submissionSource`):** `isSubmissionFile(name, kind, source)` — `archive` (mặc định) chỉ
+  nhận file nén / Office như trên; `link` chỉ nhận file link `.txt .url .webloc` (`LINK_EXTS`), kiểm tra bằng
+  `quickCheckLink` (có link GitHub / GitLab / Bitbucket không, không gọi mạng); `both` nhận cả hai. Ghi chú sai tên ghi
+  đuôi `.txt` khi nguồn là link. Chi tiết: [git-link-submission.md](git-link-submission.md).
 - Chỉ quét file ở cấp đầu của folder (không đệ quy). Nhận các đuôi trong `SUPPORTED_EXTS`
   (`src/shared/submissionName.ts`: .zip .rar .7z .tar .tgz .tbz .tbz2 .txz .gz .bz2 .xz .zst .iso .dmg .arj .cab .lzh
   .lha .arc .pak); đuôi khác bỏ qua. Cách đọc từng định dạng: xem [zip-extract.md](zip-extract.md).

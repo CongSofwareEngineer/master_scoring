@@ -9,3 +9,4 @@
 - 2026-10-07 | Sửa | Quét folder bài nộp: nhận mọi đuôi trong `SUPPORTED_EXTS` (.zip .rar .7z .tar.gz .iso .dmg .arj…), kiểm tra bằng `quickCheckArchive`; `unsupported` chỉ còn khi máy thiếu 7-Zip; tách tên bỏ cả đuôi kép `.tar.gz` — hỗ trợ đọc nhiều định dạng nén
 - 2026-10-07 | Sửa | Quét folder: assignment báo cáo nhận file `.docx` nộp thẳng (`isSubmissionFile`), bỏ file `~$*`, kiểm tra nhanh .docx — hỗ trợ chấm báo cáo
 - 2026-10-07 | Sửa | Quét folder: assignment báo cáo nhận file .doc .docx .xls .xlsx .ppt .pptx .rtf nộp thẳng, kiểm tra nhanh bằng `quickCheckOffice` (theo nội dung file) — .doc / .docx đều là Word, thêm Excel / PowerPoint
+- 2026-10-26 | Sửa | Quét folder bài nộp: lọc file theo `Assignment.submissionSource` (file nén / link Git / cả hai), nhận file link `.txt .url .webloc`, kiểm tra nhanh bằng `quickCheckLink` — hỗ trợ sinh viên nộp link repo Git

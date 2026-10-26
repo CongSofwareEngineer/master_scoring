@@ -87,7 +87,7 @@ Build Windows chạy được trên cả macOS lẫn Windows. Build macOS cần 
 src/shared/      kiểu dữ liệu + hằng số dùng chung (model, profile, rubric mẫu)
 src/main/        Electron main process
   ai/            llama-server sidecar, tải model (resume + SHA-256), client OpenAI-compatible (Local/Cloud)
-  importer/      quét folder, giải nén an toàn (zip-slip, zip bomb, tên file CP1258), đọc file Word / Excel / PowerPoint (.doc/.docx, .xls/.xlsx, .ppt/.pptx, .rtf), danh sách lớp
+  importer/      quét folder, tải code bài nộp dạng link GitHub / GitLab / Bitbucket, giải nén an toàn (zip-slip, zip bomb, tên file CP1258), đọc file Word / Excel / PowerPoint (.doc/.docx, .xls/.xlsx, .ppt/.pptx, .rtf), danh sách lớp
   analysis/      nhận diện công nghệ, phân tích tĩnh, kiểm tra hình thức báo cáo, compile/test C/C++ (MinGW), chạy tiến trình có giới hạn
   grading/       prompt + JSON schema, pipeline chấm 1 SV, hàng đợi tuần tự (pause/resume/cancel, tiếp tục sau khi tắt app)
   integrity/     fingerprint winnowing (kiểu MOSS), so sánh cặp, cluster

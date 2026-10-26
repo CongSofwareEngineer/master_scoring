@@ -11,7 +11,8 @@
 `gradeStudent(student, assignment, signal, onStep, onStatus)`:
 
 1. **Giải nén** (`extracting`): `loadForGrading` lọc theo profile / tự nhận diện (xem `tech-profiles.md`,
-   `zip-extract.md`). Không còn file → lỗi "Không tìm thấy mã nguồn".
+   `zip-extract.md`). Bài nộp link Git: truyền `{ refreshGit: true }` → luôn tải code mới nhất của repo lúc chấm
+   (xem `git-link-submission.md`). Không còn file → lỗi "Không tìm thấy mã nguồn".
 2. **Kiểm tra tự động** (`analyzing`): `runStatic` (xem `static-analysis.md`); nếu rubric có tiêu chí `compile`/`test`:
    C/C++ → `compileAndTest`; Solidity → `compileSolidity` (`solc`) rồi `testSolidity` (`forge test`); Android →
    `gradle assembleDebug` (chỉ khi profile bật build và có SDK/JDK, dùng Gradle của máy giáo viên, không chạy `gradlew`

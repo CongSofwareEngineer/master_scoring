@@ -1,6 +1,6 @@
 import { AUTO_PROFILE_ID, REPORT_PROFILE, REPORT_PROFILE_ID } from '@shared/constants'
 import type { Assignment, TechProfile } from '@shared/types'
-import { decodeText, loadSubmission, matchesIgnore, type ExtractLimits, type Submission } from '../importer/extract'
+import { decodeText, loadSubmission, matchesIgnore, type ExtractLimits, type LoadOptions, type Submission } from '../importer/extract'
 
 // Profile dạng framework/project: nhận diện bằng file đánh dấu (package.json, Manifest...), ưu tiên theo thứ tự.
 const FRAMEWORK_PROFILES = ['android', 'nextjs', 'react-native', 'reactjs']
@@ -78,17 +78,18 @@ export async function loadForGrading(
   zipPath: string,
   profiles: TechProfile[],
   profileId: string,
-  limits: ExtractLimits
+  limits: ExtractLimits,
+  opts: LoadOptions = {}
 ): Promise<{ sub: Submission; profile: TechProfile; detected: string | null }> {
   if (profileId === REPORT_PROFILE_ID) {
-    return { sub: await loadSubmission(zipPath, REPORT_PROFILE, limits), profile: REPORT_PROFILE, detected: null }
+    return { sub: await loadSubmission(zipPath, REPORT_PROFILE, limits, opts), profile: REPORT_PROFILE, detected: null }
   }
   const chosen = profiles.find((p) => p.id === profileId) ?? profiles.find((p) => p.id === AUTO_PROFILE_ID) ?? profiles[0]
   if (chosen.id !== AUTO_PROFILE_ID) {
-    const sub = await loadSubmission(zipPath, chosen, limits)
+    const sub = await loadSubmission(zipPath, chosen, limits, opts)
     return { sub: { ...sub, files: filterFiles(sub.files, []) }, profile: chosen, detected: null }
   }
-  const sub = await loadSubmission(zipPath, { ...chosen, extensions: profiles.flatMap((p) => p.extensions) }, limits)
+  const sub = await loadSubmission(zipPath, { ...chosen, extensions: profiles.flatMap((p) => p.extensions) }, limits, opts)
   const detected = detectProfile(sub.files, profiles)
   const profile = profiles.find((p) => p.id === detected) ?? chosen
   return { sub: { ...sub, files: filterFiles(sub.files, profile.ignore) }, profile, detected }

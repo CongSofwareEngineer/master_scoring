@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { evaluatePenalty } from '@shared/aiPolicy'
 import { AUTO_PROFILE_ID, CLOUD_PROVIDERS, DEFAULT_AI_POLICY, DEFAULT_REPORT_CHECK, REPORT_PROFILE, REPORT_RUBRIC } from '@shared/constants'
-import type { AiConfidence, AiEstimate, AiPenaltyMode, AiPolicy, Assignment, AssignmentKind, CloudProvider, Criterion, ReportCheck, ScanSummary, StudentRow, TestCase } from '@shared/types'
+import type { AiConfidence, AiEstimate, AiPenaltyMode, AiPolicy, Assignment, AssignmentKind, CloudProvider, Criterion, ReportCheck, ScanSummary, StudentRow, SubmissionSource, TestCase } from '@shared/types'
 import { call, on } from '../lib/api'
 import { cls, uid } from '../lib/format'
 import { useT } from '../lib/i18n'
@@ -108,6 +108,7 @@ function CreateAssignment({ onCreated, onCancel }: { onCreated: (a: Assignment) 
   const [name, setName] = useState('')
   const [className, setClassName] = useState('')
   const [kind, setKind] = useState<AssignmentKind>('code')
+  const [submissionSource, setSubmissionSource] = useState<SubmissionSource>('archive')
   const [profileId, setProfileId] = useState(profiles[0]?.id ?? 'cpp')
   const create = async (): Promise<void> => {
     const profile = profiles.find((p) => p.id === profileId)
@@ -118,6 +119,7 @@ function CreateAssignment({ onCreated, onCancel }: { onCreated: (a: Assignment) 
           name: name.trim(),
           className: className.trim(),
           kind,
+          submissionSource,
           reportCheck: DEFAULT_REPORT_CHECK,
           profileId,
           rubric: rubric.map((c) => ({ ...c }))
@@ -147,6 +149,7 @@ function CreateAssignment({ onCreated, onCancel }: { onCreated: (a: Assignment) 
           <input className="input" value={className} onChange={(e) => setClassName(e.target.value)} placeholder="VD: ST4 Ca 2" />
         </Field>
         <KindField value={kind} onChange={setKind} />
+        <SourceField value={submissionSource} onChange={setSubmissionSource} />
         {kind === 'code' && (
         <Field
           label="Loại công nghệ (Tech Profile)"
@@ -190,6 +193,29 @@ function KindField({ value, onChange }: { value: AssignmentKind; onChange: (k: A
       <select className="select" value={value} onChange={(e) => onChange(e.target.value as AssignmentKind)}>
         <option value="code">{t('Chấm code')}</option>
         <option value="report">{t('Chấm báo cáo (Word / Excel / PowerPoint)')}</option>
+      </select>
+    </Field>
+  )
+}
+
+// Nguồn bài nộp: file nén (giải nén để chấm), link repo Git (tải code lúc chấm) hoặc cả hai.
+function SourceField({ value, onChange }: { value: SubmissionSource; onChange: (s: SubmissionSource) => void }): JSX.Element {
+  const t = useT()
+  return (
+    <Field
+      label={t('Nguồn bài nộp')}
+      hint={t(
+        value === 'archive'
+          ? 'Sinh viên nộp file nén (.zip, .rar, .7z…) — app giải nén để chấm.'
+          : value === 'link'
+            ? 'Sinh viên nộp file <HọTên>_<MSSV>.txt (hoặc .url / .webloc) chứa link repo GitHub / GitLab / Bitbucket public — app tải code mới nhất lúc chấm.'
+            : 'Nhận cả file nén và file .txt / .url / .webloc chứa link repo Git. Đổi nguồn xong bấm Quét lại ở tab Bài nộp.'
+      )}
+    >
+      <select className="select" value={value} onChange={(e) => onChange(e.target.value as SubmissionSource)}>
+        <option value="archive">{t('File nén (giải nén để chấm)')}</option>
+        <option value="link">{t('Link Git (GitHub / GitLab / Bitbucket)')}</option>
+        <option value="both">{t('Cả hai: file nén hoặc link Git')}</option>
       </select>
     </Field>
   )
@@ -318,6 +344,7 @@ function InfoTab({ draft, patch }: { draft: Assignment; patch: (p: Partial<Assig
           <input className="input" value={draft.className} onChange={(e) => patch({ className: e.target.value })} />
         </Field>
         <KindField value={draft.kind} onChange={(k) => void changeKind(k)} />
+        <SourceField value={draft.submissionSource} onChange={(submissionSource) => patch({ submissionSource })} />
         {!report && (
           <Field label="Loại công nghệ">
             <select className="select" value={draft.profileId} onChange={(e) => patch({ profileId: e.target.value })}>
@@ -785,7 +812,13 @@ function SubmissionsTab({ assignment, onBeforeAction }: { assignment: Assignment
         <div className="row wrap">
           <FolderOpen size={16} className="text-2" />
           <div className="grow" style={{ minWidth: 200 }}>
-            <div className="label">{report ? 'Folder chứa file Word / Excel / PowerPoint / file nén bài nộp' : 'Folder chứa file nén bài nộp'}</div>
+            <div className="label">
+              {assignment.submissionSource === 'link'
+                ? 'Folder chứa file link bài nộp (.txt / .url / .webloc)'
+                : report
+                  ? 'Folder chứa file Word / Excel / PowerPoint / file nén bài nộp'
+                  : 'Folder chứa file nén bài nộp'}
+            </div>
             <div className="mono truncate" title={assignment.submissionsDir}>
               {assignment.submissionsDir || <span className="muted">Chưa chọn</span>}
             </div>
@@ -798,7 +831,14 @@ function SubmissionsTab({ assignment, onBeforeAction }: { assignment: Assignment
             {scanning ? `Đang quét ${scanning.done}/${scanning.total}` : 'Quét lại'}
           </button>
         </div>
-        {report ? (
+        {assignment.submissionSource !== 'archive' && (
+          <div className="meta mt-8">
+            Nộp link Git: file <code>&lt;TenSV&gt;_&lt;MSSV&gt;.txt</code> (hoặc shortcut .url / .webloc) chứa link repo public, ví dụ{' '}
+            <code>HoDienCong_23546.txt</code> có nội dung <code>https://github.com/hodiencong/bai-tap-3</code>. Nhận GitHub, GitLab, Bitbucket; link
+            tới nhánh / thư mục (<code>/tree/main/src</code>) thì chỉ chấm thư mục đó. Code được tải bản mới nhất lúc chấm.
+          </div>
+        )}
+        {assignment.submissionSource === 'link' ? null : report ? (
           <div className="meta mt-8">
             Quy ước tên file: <code>&lt;TenSV&gt;_&lt;MSSV&gt;.docx</code> (hoặc .doc, .xlsx, .xls, .pptx, .ppt) — ví dụ <code>HoDienCong_23546.docx</code>, hoặc file nén
             <code>HoDienCong_23546.zip</code> chứa các file đó. Tách theo dấu “_” cuối cùng. File .pdf chưa đọc được — yêu cầu sinh viên nộp file Word / Excel / PowerPoint.

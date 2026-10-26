@@ -24,6 +24,7 @@ Quy tắc: xem [../CLAUDE.md](../CLAUDE.md).
 | Assignment, rubric, test case, rubric mẫu | [instruction/assignment.md](instruction/assignment.md) | [changelog/assignment.md](changelog/assignment.md) |
 | Quét folder bài nộp & quy tắc tên file | [instruction/submission-scan.md](instruction/submission-scan.md) | [changelog/submission-scan.md](changelog/submission-scan.md) |
 | Danh sách lớp (Excel/CSV) | [instruction/class-list.md](instruction/class-list.md) | [changelog/class-list.md](changelog/class-list.md) |
+| Bài nộp dạng link Git (GitHub / GitLab / Bitbucket) | [instruction/git-link-submission.md](instruction/git-link-submission.md) | [changelog/git-link-submission.md](changelog/git-link-submission.md) |
 | Giải nén bài nộp an toàn | [instruction/zip-extract.md](instruction/zip-extract.md) | [changelog/zip-extract.md](changelog/zip-extract.md) |
 | Tech Profile & tự động nhận diện công nghệ | [instruction/tech-profiles.md](instruction/tech-profiles.md) | [changelog/tech-profiles.md](changelog/tech-profiles.md) |
 

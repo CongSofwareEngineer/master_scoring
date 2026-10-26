@@ -331,10 +331,14 @@ export async function gradeStudent(
     onStep('Giải nén & lọc file')
     // + 2. Nhận diện công nghệ (chỉ khi assignment chọn "Tự động nhận diện")
     const report = a.kind === 'report'
-    const { sub, profile, detected } = await loadForGrading(student.zipPath, profiles, gradingProfileId(a), {
-      maxBytes: settings.maxUnzipMb * 1048576,
-      maxFiles: settings.maxFiles
-    })
+    // Bài nộp link Git: luôn tải code mới nhất của repo lúc chấm
+    const { sub, profile, detected } = await loadForGrading(
+      student.zipPath,
+      profiles,
+      gradingProfileId(a),
+      { maxBytes: settings.maxUnzipMb * 1048576, maxFiles: settings.maxFiles },
+      { refreshGit: true }
+    )
     warnings.push(...sub.warnings.slice(0, 30))
     if (!sub.files.size) throw new SubmissionError(report ? 'Không tìm thấy file báo cáo Word / Excel / PowerPoint đọc được' : 'Không tìm thấy mã nguồn')
     if (profile.id === AUTO_PROFILE_ID) warnings.unshift('Không nhận diện được công nghệ của bài nộp — chấm theo tiêu chí chung')

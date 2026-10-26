@@ -14,7 +14,10 @@
   .pptx .ppt .rtf) → `officeToText` (lỗi = cả bài lỗi); trong file nén `classify` chỉ trả `docx` cho file có đuôi trong
   `REPORT_EXTS` ≤ 100 MB (còn lại bỏ; `.pdf .odt .ods .odp .pages .numbers .key` → cảnh báo), văn bản lưu dưới tên file
   gốc, thống kê ở `Submission.docs`. `quickCheckArchive` với file Office → `quickCheckOffice`. Xem [report-grading.md](report-grading.md).
-- `loadSubmission(path, profile, limits)` chọn cách đọc theo đuôi file:
+- `loadSubmission(path, profile, limits, opts)` chọn cách đọc theo đuôi file:
+  - **File link `.txt .url .webloc`** → `fetchRepoArchive` tải zip của repo Git (`opts.refreshGit`: tải mới / dùng
+    cache) → `walkZip` như bài zip → `pickRepoFiles` bỏ thư mục gốc của archive, giữ thư mục con trong link. Thêm cảnh
+    báo "Code lấy từ <link> lúc <giờ>". Xem [git-link-submission.md](git-link-submission.md).
   - **`.zip`** → `walkZip`: đọc bằng `yauzl` **vào RAM** (`Map<path, Buffer>`), không ghi ra đĩa.
   - **Đuôi khác** → `walk7z`: dùng 7-Zip (`sevenZip.ts`):
     1. `7z l -slt -ba` liệt kê file (đường dẫn, dung lượng, cờ mật khẩu).
@@ -49,7 +52,7 @@
 - Chỉ có 1 thư mục gốc chung → tự bỏ (tối đa 3 cấp). Kết quả sắp xếp theo đường dẫn.
 - `decodeText(buf)`: UTF-16 BOM → UTF-8 (bỏ BOM) → fallback CP1258.
 - Cảnh báo (`warnings`) được lưu vào kết quả chấm để giáo viên xem.
-- **Kiểm tra nhanh khi quét folder:** `quickCheckArchive` — `.zip` → `quickCheckZip` (chỉ đọc central directory);
+- **Kiểm tra nhanh khi quét folder:** `quickCheckArchive` — file link → `quickCheckLink`; `.zip` → `quickCheckZip` (chỉ đọc central directory);
   khác → `7z l` (rỗng / mật khẩu / không mở được). Không giải nén.
 
 ## Lưu ý / giới hạn

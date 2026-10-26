@@ -1,4 +1,4 @@
-// Quy ước đặt tên file bài nộp: <Họ tên>_<MSSV>.<đuôi nén> (vd HoDienCong_23546.zip, HoDienCong_23546.rar).
+// Quy ước đặt tên file bài nộp: <Họ tên>_<MSSV>.<đuôi nén> (vd HoDienCong_23546.zip, HoDienCong_23546.rar, HoDienCong_23546.txt chứa link GitHub).
 // Chỉ cần có dấu "_" để tách họ tên và MSSV, không có ràng buộc về định dạng MSSV.
 
 export interface ParsedSubmissionName {
@@ -46,9 +46,21 @@ export function isArchiveName(fileName: string): boolean {
 // .doc và .docx (tương tự .xls/.xlsx, .ppt/.pptx) đều đọc được — nhận diện theo nội dung file (src/main/importer/office.ts).
 export const REPORT_EXTS = ['.docx', '.doc', '.xlsx', '.xls', '.pptx', '.ppt', '.rtf']
 
-/** File ở folder bài nộp có được quét không: file nén, hoặc file Office với assignment báo cáo. */
-export function isSubmissionFile(fileName: string, kind: 'code' | 'report' = 'code'): boolean {
+// Nộp link repo Git: <HọTên>_<MSSV>.txt / .url (shortcut Windows) / .webloc (shortcut macOS) chứa link GitHub / GitLab / Bitbucket.
+export const LINK_EXTS = ['.txt', '.url', '.webloc']
+
+export function isLinkFile(fileName: string): boolean {
+  return LINK_EXTS.includes(fileExtension(fileName))
+}
+
+/**
+ * File ở folder bài nộp có được quét không, theo nguồn bài nộp của assignment:
+ * file nén / file Office (assignment báo cáo) khi source ≠ 'link'; file link khi source ≠ 'archive'.
+ */
+export function isSubmissionFile(fileName: string, kind: 'code' | 'report' = 'code', source: 'archive' | 'link' | 'both' = 'archive'): boolean {
   if (baseName(fileName).startsWith('~$')) return false // file khoá tạm của Word / Excel / PowerPoint
+  if (source !== 'archive' && isLinkFile(fileName)) return true
+  if (source === 'link') return false
   return isArchiveName(fileName) || (kind === 'report' && REPORT_EXTS.includes(fileExtension(fileName)))
 }
 
@@ -93,7 +105,7 @@ export interface NameCheckResult {
 export function checkSubmissionName(fileName: string): NameCheckResult {
   const ext = fileExtension(fileName)
   if (UNSUPPORTED_EXTS.includes(ext)) return { verdict: 'unsupported_ext', name: null, mssv: null, rawMssv: null }
-  if (!SUPPORTED_EXTS.includes(ext) && !REPORT_EXTS.includes(ext)) return { verdict: 'ignored_ext', name: null, mssv: null, rawMssv: null }
+  if (!SUPPORTED_EXTS.includes(ext) && !REPORT_EXTS.includes(ext) && !LINK_EXTS.includes(ext)) return { verdict: 'ignored_ext', name: null, mssv: null, rawMssv: null }
   const stem = stripExtension(fileName).normalize('NFC')
   const idx = stem.lastIndexOf('_')
   if (idx < 0) return { verdict: 'no_separator', name: null, mssv: null, rawMssv: null }

@@ -1,5 +1,6 @@
 // Quét folder bài nộp: <TenSV>_<MSSV>.<đuôi nén> (.zip .rar .7z .tar.gz .iso .dmg...) — tách theo dấu "_" cuối cùng.
 // Assignment báo cáo nhận thêm file Word / Excel / PowerPoint nộp thẳng: <TenSV>_<MSSV>.docx (.doc .xlsx .pptx…).
+// Assignment nhận link Git (submissionSource 'link' / 'both'): <TenSV>_<MSSV>.txt / .url / .webloc chứa link repo.
 // Chỉ cần có dấu "_" là đủ, không có ràng buộc về định dạng MSSV.
 import { existsSync, readdirSync, statSync } from 'fs'
 import { basename, join } from 'path'
@@ -36,7 +37,7 @@ export async function scanFolder(a: Assignment, onProgress?: (done: number, tota
     i++
     onProgress?.(i, entries.length)
     const p = join(a.submissionsDir, d.name)
-    if (!isSubmissionFile(d.name, a.kind)) continue
+    if (!isSubmissionFile(d.name, a.kind, a.submissionSource)) continue
     const mtime = Math.floor(statSync(p).mtimeMs)
     try {
       found.push({ path: p, mtime, kind: 'archive', parsed: parseSubmissionName(d.name), broken: await quickCheckArchive(p) })
@@ -90,7 +91,7 @@ export async function scanFolder(a: Assignment, onProgress?: (done: number, tota
     if (!parsed) {
       const stem = stripExtension(f.path).normalize('NFC')
       const idx = stem.lastIndexOf('_')
-      const ext = a.kind === 'report' ? '.docx' : '.zip'
+      const ext = a.submissionSource === 'link' ? '.txt' : a.kind === 'report' ? '.docx' : '.zip'
       const note =
         idx > 0 && stem.slice(idx + 1).trim()
           ? `Sai định dạng tên file (cần <HọTên>_<MSSV>${ext}, vd HoDienCong_23546${ext}) — thiếu họ tên hoặc MSSV bị trống`

@@ -293,6 +293,18 @@ export const EN: Record<string, string> = {
   'File Excel quá cũ hoặc hỏng (chỉ đọc được Excel 97 trở lên)': 'Excel file too old or corrupted (Excel 97 or later only)',
   'File Word / Excel / PowerPoint / file nén': 'Word / Excel / PowerPoint / archive files',
   'Câu hỏi vấn đáp chỉ áp dụng cho assignment chấm code': 'Oral questions are only available for code assignments',
+  // Bài nộp dạng link Git
+  'Nguồn bài nộp': 'Submission source',
+  'File nén (giải nén để chấm)': 'Archive files (extracted for grading)',
+  'Link Git (GitHub / GitLab / Bitbucket)': 'Git link (GitHub / GitLab / Bitbucket)',
+  'Cả hai: file nén hoặc link Git': 'Both: archive or Git link',
+  'Sinh viên nộp file nén (.zip, .rar, .7z…) — app giải nén để chấm.': 'Students submit archives (.zip, .rar, .7z…) — the app extracts them for grading.',
+  'Sinh viên nộp file <HọTên>_<MSSV>.txt (hoặc .url / .webloc) chứa link repo GitHub / GitLab / Bitbucket public — app tải code mới nhất lúc chấm.':
+    'Students submit a <StudentName>_<StudentID>.txt (or .url / .webloc) file containing a public GitHub / GitLab / Bitbucket repo link — the app downloads the latest code when grading.',
+  'Nhận cả file nén và file .txt / .url / .webloc chứa link repo Git. Đổi nguồn xong bấm Quét lại ở tab Bài nộp.':
+    'Accepts both archives and .txt / .url / .webloc files containing a Git repo link. After changing the source, click Rescan in the Submissions tab.',
+  'Không tìm thấy link GitHub / GitLab / Bitbucket trong file': 'No GitHub / GitLab / Bitbucket link found in the file',
+  'File link quá lớn (> 64 KB)': 'Link file too large (> 64 KB)',
   // Trợ lý dữ liệu
   'Phân tích dữ liệu': 'Data Analysis',
   'Mở file Excel / CSV rồi hỏi trợ lý kế toán AI ở khung bên phải.': 'Open Excel / CSV files, then ask the AI accountant on the right.',
@@ -405,6 +417,16 @@ const EN_PATTERNS: [RegExp, (m: RegExpMatchArray, tr: (s: string) => string) => 
   [/^Bỏ qua file quá lớn \(> 100 MB\): (.+)$/, (m) => `Skipped file larger than 100 MB: ${m[1]}`],
   [/^File (Word|Excel|PowerPoint|Office|Word \.doc|Excel \.xls) (.*hỏng.*)$/, (m) => `Corrupted ${m[1]} file${m[2].includes(':') ? ':' + m[2].split(':').slice(1).join(':') : ''}`],
   [/^File (Word|Excel|PowerPoint) không có nội dung .*$/, (m) => `The ${m[1]} file has no content`],
+  [/^Code lấy từ (\S+) lúc (.+)$/, (m) => `Code downloaded from ${m[1]} at ${m[2]}`],
+  [/^Không tải được code từ (\w+) \(HTTP (\d+)\) — repo không tồn tại.*$/, (m) =>
+    `Could not download the code from ${m[1]} (HTTP ${m[2]}) — the repo does not exist, the branch name is wrong or the repo is private. Ask the student to make the repo public`],
+  [/^Không tải được code từ (\w+) \(HTTP (\d+)\)$/, (m) => `Could not download the code from ${m[1]} (HTTP ${m[2]})`],
+  [/^(\w+) đang giới hạn số lần tải \(HTTP 429\) — thử chấm lại sau ít phút$/, (m) => `${m[1]} is rate-limiting downloads (HTTP 429) — try grading again in a few minutes`],
+  [/^Không kết nối được tới (\w+): (.*)$/s, (m) => `Could not connect to ${m[1]}: ${m[2]}`],
+  [/^Tải code từ (\w+) bị gián đoạn: (.*)$/s, (m) => `Downloading the code from ${m[1]} was interrupted: ${m[2]}`],
+  [/^(\w+) không trả về file zip của repo — kiểm tra lại link$/, (m) => `${m[1]} did not return a zip of the repo — check the link`],
+  [/^Repo vượt giới hạn dung lượng (\d+) MB$/, (m) => `The repo exceeds the ${m[1]} MB size limit`],
+  [/^Không tìm thấy thư mục (.+) trong repo$/, (m) => `Folder ${m[1]} was not found in the repo`],
   // Lỗi test case: "<tên test>: <lỗi>"
   [/^(.+?): (Quá thời gian .*|Vượt giới hạn RAM .*|Output .*|Chương trình kết thúc .*)$/s, (m, tr) => `${m[1]}: ${tr(m[2])}`]
 ]

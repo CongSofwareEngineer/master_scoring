@@ -14,6 +14,8 @@
 - **Loại bài (`kind`):** `code` (chấm code theo Tech Profile) hoặc `report` (chấm báo cáo .docx — ẩn chọn công nghệ,
   tab Test case thay bằng tab Kiểm tra hình thức `reportCheck`, rubric mẫu `REPORT_RUBRIC`). Chi tiết:
   [report-grading.md](report-grading.md).
+- **Nguồn bài nộp (`submissionSource`):** `archive` (mặc định) / `link` / `both`, chọn ở form tạo và tab Thông tin
+  (`SourceField`); thiếu → `archive`. Xem [git-link-submission.md](git-link-submission.md).
 - Trang Assignments có các tab: Thông tin (`InfoTab`), Chính sách AI (`AiPolicyTab`), Rubric (`RubricTab`), Test case
   (`TestsTab`), Bài nộp (`SubmissionsTab`).
 - **Rubric:** mỗi tiêu chí có `id`, `name`, `max`, `source` ∈ `compile | test | static | ai | teacher`, mô tả.

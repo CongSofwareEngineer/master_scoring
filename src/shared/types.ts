@@ -47,6 +47,9 @@ export interface AiPolicy {
 // Loại bài: chấm code (Tech Profile, compile/test...) hoặc chấm báo cáo / bài viết Word / Excel / PowerPoint.
 export type AssignmentKind = 'code' | 'report'
 
+// Nguồn bài nộp: file nén (như cũ), file link repo Git (.txt / .url / .webloc), hoặc cả hai.
+export type SubmissionSource = 'archive' | 'link' | 'both'
+
 // Kiểm tra hình thức báo cáo (tiêu chí nguồn "static" của assignment loại report).
 export interface ReportCheck {
   minWords: number // 0 = không kiểm tra
@@ -74,6 +77,7 @@ export interface Assignment {
   cloudModel: string
   cloudConsent: boolean
   submissionsDir: string
+  submissionSource: SubmissionSource
   starterDir: string
   classList: ClassListEntry[]
   aiPolicy: AiPolicy

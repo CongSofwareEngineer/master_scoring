@@ -8,13 +8,15 @@
 // - File nén lồng file nén: giải thêm 1 cấp. Chỉ có 1 thư mục gốc: tự lấy làm gốc project.
 // - Assignment báo cáo (profile REPORT_PROFILE): chỉ lấy file Word / Excel / PowerPoint (nộp thẳng hoặc trong file nén),
 //   chuyển thành văn bản (office.ts).
+// - Bài nộp dạng link Git (.txt / .url / .webloc): tải zip của repo (gitRepo.ts) rồi đọc như bài zip.
 import iconv from 'iconv-lite'
 import { lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { basename, dirname, join, normalize, resolve, sep } from 'path'
 import yauzl from 'yauzl'
 import { BLOCKED_EXT, BUILTIN_PROFILES, REPORT_PROFILE_ID } from '@shared/constants'
-import { COMPRESS_ONLY_EXTS, REPORT_EXTS, fileExtension, stripExtension } from '@shared/submissionName'
+import { COMPRESS_ONLY_EXTS, REPORT_EXTS, fileExtension, isLinkFile, stripExtension } from '@shared/submissionName'
 import type { DocStats, TechProfile } from '@shared/types'
+import { GitLinkError, fetchRepoArchive, quickCheckLink } from './gitRepo'
 import { officeToText, quickCheckOffice } from './office'
 import { paths } from '../paths'
 import { ArchiveError, extractArchive, findSevenZip, listArchive } from './sevenZip'
@@ -32,6 +34,11 @@ export interface Submission {
 export interface ExtractLimits {
   maxBytes: number
   maxFiles: number
+}
+
+export interface LoadOptions {
+  // Bài nộp link Git: true = tải bản mới nhất (lúc chấm); false = dùng bản đã tải lần chấm trước (Code Review…).
+  refreshGit?: boolean
 }
 
 // Không đọc với mọi profile: thư viện/thư mục sinh tự động, log, lock file, tài liệu, file cấu hình công cụ, code đã minify.
@@ -363,7 +370,25 @@ function stripCommonRoot(files: Map<string, Buffer>): Map<string, Buffer> {
   return current
 }
 
-export async function loadSubmission(zipPath: string, profile: TechProfile, limits: ExtractLimits): Promise<Submission> {
+// Zip của repo Git có 1 thư mục gốc <repo>-<sha>/ → bỏ; link trỏ thư mục con → chỉ giữ file trong thư mục đó.
+function pickRepoFiles(files: Map<string, Buffer>, subdir: string): Map<string, Buffer> {
+  const out = new Map<string, Buffer>()
+  const prefix = subdir ? subdir.replace(/^\/+|\/+$/g, '') + '/' : ''
+  for (const [k, v] of files) {
+    const rel = k.includes('/') ? k.slice(k.indexOf('/') + 1) : k
+    if (!prefix) out.set(rel, v)
+    else if (rel.startsWith(prefix)) out.set(rel.slice(prefix.length), v)
+  }
+  return out
+}
+
+function formatTime(iso: string): string {
+  const d = new Date(iso)
+  const p = (n: number): string => String(n).padStart(2, '0')
+  return `${p(d.getHours())}:${p(d.getMinutes())} ${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`
+}
+
+export async function loadSubmission(zipPath: string, profile: TechProfile, limits: ExtractLimits, opts: LoadOptions = {}): Promise<Submission> {
   const ctx: Ctx = {
     report: profile.id === REPORT_PROFILE_ID,
     docStats: new Map(),
@@ -378,7 +403,22 @@ export async function loadSubmission(zipPath: string, profile: TechProfile, limi
     skippedLarge: 0,
     skippedBinary: 0
   }
-  if (REPORT_EXTS.includes(fileExtension(zipPath))) {
+  if (isLinkFile(zipPath)) {
+    // Bài nộp là link repo Git → tải zip của repo rồi đọc như bài zip
+    let repo
+    try {
+      repo = await fetchRepoArchive(zipPath, { refresh: !!opts.refreshGit, maxBytes: limits.maxBytes })
+    } catch (e) {
+      if (e instanceof GitLinkError) throw new SubmissionError(e.message)
+      throw e
+    }
+    await walkZip(repo.zipPath, '', 0, ctx)
+    const read = ctx.out.size
+    ctx.out = pickRepoFiles(ctx.out, repo.link.subdir)
+    ctx.rawDocs = pickRepoFiles(ctx.rawDocs, repo.link.subdir)
+    if (repo.link.subdir && read && !ctx.out.size) throw new SubmissionError(`Không tìm thấy thư mục ${repo.link.subdir} trong repo`)
+    ctx.warnings.unshift(`Code lấy từ ${repo.link.url} lúc ${formatTime(repo.fetchedAt)}`)
+  } else if (REPORT_EXTS.includes(fileExtension(zipPath))) {
     // Báo cáo nộp thẳng file Word / Excel / PowerPoint (không nén)
     if (!ctx.report) throw new SubmissionError('File Word / Excel / PowerPoint chỉ chấm được ở assignment loại Báo cáo')
     const size = lstatSync(zipPath).size
@@ -441,6 +481,7 @@ export async function quickCheckZip(zipPath: string): Promise<string | null> {
 // Kiểm tra nhanh file nén định dạng khác bằng 7-Zip (chỉ liệt kê, không giải nén).
 // Trả về lý do lỗi, null nếu dùng được. Máy không có 7-Zip → ném NoSevenZipError (quét sẽ đánh dấu "không hỗ trợ").
 export async function quickCheckArchive(file: string): Promise<string | null> {
+  if (isLinkFile(file)) return quickCheckLink(file)
   if (REPORT_EXTS.includes(fileExtension(file))) return quickCheckOffice(readFileSync(file))
   if (fileExtension(file) === '.zip') return quickCheckZip(file)
   const bin = await requireSevenZip(file)

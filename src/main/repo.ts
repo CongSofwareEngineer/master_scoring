@@ -24,6 +24,7 @@ const DEFAULT_ASSIGNMENT: Omit<Assignment, 'id' | 'createdAt' | 'updatedAt'> = {
   cloudModel: '',
   cloudConsent: false,
   submissionsDir: '',
+  submissionSource: 'archive',
   starterDir: '',
   classList: [],
   aiPolicy: DEFAULT_AI_POLICY
@@ -35,6 +36,7 @@ function rowToAssignment(row: { id: number; data: string; created_at: string; up
     ...DEFAULT_ASSIGNMENT,
     ...data,
     kind: data.kind === 'report' ? 'report' : 'code',
+    submissionSource: data.submissionSource === 'link' || data.submissionSource === 'both' ? data.submissionSource : 'archive',
     reportCheck: { ...DEFAULT_REPORT_CHECK, ...(data.reportCheck ?? {}) },
     aiPolicy: normalizePolicy(data.aiPolicy),
     id: row.id,
