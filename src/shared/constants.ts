@@ -1,4 +1,4 @@
-import type { AiConfidence, AiPolicy, AppSettings, AssignmentKind, CloudProvider, Criterion, CriterionSource, GradeStatus, ReportCheck, TechProfile } from './types'
+import type { AiConfidence, AiPolicy, AppSettings, AssignmentKind, Criterion, CriterionSource, GradeStatus, ReportCheck, TechProfile } from './types'
 
 export const APP_NAME = 'Master Scoring'
 
@@ -29,33 +29,6 @@ export const MODELS = [
 
 export const DEFAULT_MODEL_ID = 'qwen2.5-coder-1.5b'
 
-export const CLOUD_PROVIDERS: Record<CloudProvider, { name: string; baseUrl: string; defaultModel: string; models: string[] }> = {
-  gemini: {
-    name: 'Gemini',
-    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
-    defaultModel: 'gemini-2.5-flash',
-    models: ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.5-flash-lite']
-  },
-  openai: {
-    name: 'OpenAI',
-    baseUrl: 'https://api.openai.com/v1',
-    defaultModel: 'gpt-4.1-mini',
-    models: ['gpt-4.1-mini', 'gpt-4.1', 'gpt-4o-mini']
-  },
-  anthropic: {
-    name: 'Anthropic',
-    baseUrl: 'https://api.anthropic.com/v1',
-    defaultModel: 'claude-sonnet-5-5',
-    models: ['claude-sonnet-5-5', 'claude-opus-5-5', 'claude-haiku-4-5-20251001']
-  },
-  compatible: {
-    name: 'OpenAI-compatible (URL)',
-    baseUrl: '',
-    defaultModel: '',
-    models: []
-  }
-}
-
 // Context (token) chọn trong AI Models — dùng đúng giá trị chọn cho cả Local AI và Cloud AI, tối đa MAX_CONTEXT (200K).
 export const CONTEXT_OPTIONS = [8192, 16384, 32768, 102400, 153600, 204800]
 export const DEFAULT_CONTEXT = 32768
@@ -80,8 +53,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   maxFiles: 20000,
   similarityEnabled: false,
   similarityThreshold: 70,
-  aiQuestionsEnabled: false,
-  aiQuestionsMinPercent: 60,
   anonymizeCloud: true,
   androidSdkPath: '',
   jdkPath: '',

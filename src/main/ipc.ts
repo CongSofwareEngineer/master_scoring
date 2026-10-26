@@ -5,8 +5,8 @@ import { evaluatePenalty, normalizePolicy } from '@shared/aiPolicy'
 import { round2 } from '@shared/constants'
 import { translate } from '@shared/i18n'
 import { REPORT_EXTS, SUPPORTED_EXTS } from '@shared/submissionName'
-import type { Assignment, CloudProvider, Criterion, DataBackendChoice, Lang, TechProfile } from '@shared/types'
-import { cloudBackend, getCloudConfig, localBackend, saveCloudConfig, testConnection } from './ai/client'
+import type { Assignment, Criterion, DataBackendChoice, Lang, TechProfile } from '@shared/types'
+import { cloudBackend, cloudHasKey, getCloudConfig, localBackend, saveCloudConfig, testConnection } from './ai/client'
 import { aiStatus, ensureLocalStarted, installAndUse, pauseModelDownload, restartLocal, switchModel } from './ai/manager'
 import { getLocalState, stopLocal } from './ai/llama'
 import { currentDownload, deleteModel, hasPartial, importModelFile, listModels } from './ai/models'
@@ -117,8 +117,6 @@ export function registerIpc(): void {
     requireUser()
     if (patch.similarityThreshold !== undefined && !(patch.similarityThreshold >= 30 && patch.similarityThreshold <= 100))
       throw new Error('Ngưỡng trùng lặp phải trong khoảng 30–100%')
-    if (patch.aiQuestionsMinPercent !== undefined && !(patch.aiQuestionsMinPercent >= 0 && patch.aiQuestionsMinPercent <= 100))
-      throw new Error('Ngưỡng % code AI để đề xuất câu hỏi phải trong khoảng 0–100%')
     return updateSettings(getCurrentUser()!.id, patch)
   })
 
@@ -160,17 +158,19 @@ export function registerIpc(): void {
   })
   handle('ai:cloudConfig', async () => {
     const u = requireUser()
-    return { ...getCloudConfig(u.id), configured: (await aiStatus(u.id)).cloudConfigured }
+    return { ...getCloudConfig(u.id), hasKey: cloudHasKey(u.id) }
   })
   handle('ai:cloudConfigured', async () => (await aiStatus(requireUser().id)).cloudConfigured)
-  handle('ai:saveCloud', (provider: CloudProvider, apiKey: string | null, model: string, url?: string) => {
-    saveCloudConfig(requireUser().id, provider, apiKey, model, url)
+  // Cloud API chung: URL chuẩn OpenAI + API key (null = giữ key cũ, '' = xoá) + model
+  handle('ai:saveCloud', (url: string, model: string, apiKey: string | null) => {
+    saveCloudConfig(requireUser().id, String(url ?? ''), String(model ?? ''), apiKey === null ? null : String(apiKey))
     emit('ai:cloud-changed')
   })
-  handle('ai:testCloud', async (provider: CloudProvider, apiKey: string | null, model: string, url?: string) => {
+  handle('ai:testCloud', async (url: string, model: string, apiKey: string | null) => {
     const u = requireUser()
-    if (apiKey !== null || url !== undefined) saveCloudConfig(u.id, provider, apiKey, model, url)
-    return testConnection(cloudBackend(u.id, provider, model))
+    saveCloudConfig(u.id, String(url ?? ''), String(model ?? ''), apiKey === null ? null : String(apiKey))
+    emit('ai:cloud-changed')
+    return testConnection(cloudBackend(u.id))
   })
 
   // ───── Assignments ─────
@@ -180,6 +180,7 @@ export function registerIpc(): void {
     const u = requireUser()
     if (data.rubric) data.rubric = data.rubric.map((c) => ({ ...c, max: round2(Number(c.max) || 0) }))
     if (data.aiPolicy) data.aiPolicy = normalizePolicy(data.aiPolicy)
+    if (data.questionsMinPercent !== undefined) data.questionsMinPercent = Math.min(100, Math.max(0, Math.round(Number(data.questionsMinPercent) || 0)))
     const prev = data.id ? getAssignment(data.id, u.id) : null
     const before = prev ? JSON.stringify(prev.aiPolicy) : null
     const saved = saveAssignment(u.id, data)
@@ -299,7 +300,7 @@ export function registerIpc(): void {
   const generatingQuestions = new Set<number>()
   handle('result:aiQuestions', async (studentId: number) => {
     const aid = ownStudent(studentId)
-    if (!getSettings(null).aiQuestionsEnabled) throw new Error('Tính năng đề xuất câu hỏi vấn đáp đang tắt — bật trong Cài đặt → Chung')
+    if (!getAssignment(aid).questionsEnabled) throw new Error('Assignment này chưa bật tự tạo câu hỏi vấn đáp — bật trong Assignment → Thông tin')
     const q = getQueueState()
     if (q.running && !q.paused && getAssignment(q.assignmentId ?? aid).backend === 'local' && getAssignment(aid).backend === 'local') {
       throw new Error('Local AI đang chấm bài — hãy đợi hàng đợi chấm xong hoặc tạm dừng rồi thử lại')
@@ -473,8 +474,8 @@ export function registerIpc(): void {
     if (choice === 'local') {
       await ensureLocalStarted()
       backend = localBackend()
-    } else if (choice === 'gemini' || choice === 'openai' || choice === 'anthropic' || choice === 'compatible') {
-      backend = cloudBackend(u.id, choice)
+    } else if (choice === 'cloud') {
+      backend = cloudBackend(u.id)
     } else throw new Error('Chưa chọn AI')
     const lang = getSettings(u.id).lang
     return askData(u.id, question, backend, lang, (msg) => emit('data:progress', { userId: u.id, msg }))

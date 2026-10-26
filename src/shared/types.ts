@@ -27,7 +27,6 @@ export interface TestCase {
 }
 
 export type Backend = 'local' | 'cloud'
-export type CloudProvider = 'gemini' | 'openai' | 'anthropic' | 'compatible'
 
 // Chính sách ước lượng % code do AI viết và trừ điểm (theo từng assignment).
 export type AiConfidence = 'low' | 'medium' | 'high'
@@ -72,10 +71,10 @@ export interface Assignment {
   ignoreWhitespace: boolean
   timeLimitMs: number
   memoryLimitMb: number
-  backend: Backend
-  cloudProvider: CloudProvider
-  cloudModel: string
+  backend: Backend // 'cloud' = Cloud API chung của chủ assignment (URL + key + model, cấu hình trong AI Models)
   cloudConsent: boolean
+  questionsEnabled: boolean // tự tạo câu hỏi vấn đáp dựa vào code khi chấm (mặc định tắt)
+  questionsMinPercent: number // chỉ tạo khi % code AI ≥ ngưỡng (0 = mọi bài)
   submissionsDir: string
   submissionSource: SubmissionSource
   starterDir: string
@@ -321,7 +320,7 @@ export interface ModelInfo {
 export interface AiStatus {
   local: LocalState
   activeModelId: string
-  cloudConfigured: CloudProvider[]
+  cloudConfigured: boolean
   runtimeAvailable: boolean
 }
 
@@ -351,8 +350,6 @@ export interface AppSettings {
   maxFiles: number
   similarityEnabled: boolean // so sánh trùng lặp giữa sinh viên (mặc định tắt)
   similarityThreshold: number
-  aiQuestionsEnabled: boolean // AI đề xuất câu hỏi vấn đáp cho bài có % code AI cao (mặc định tắt)
-  aiQuestionsMinPercent: number
   anonymizeCloud: boolean
   androidSdkPath: string
   jdkPath: string
@@ -512,7 +509,7 @@ export interface DataFile {
   tables: DataTable[]
 }
 
-export type DataBackendChoice = 'local' | CloudProvider
+export type DataBackendChoice = 'local' | 'cloud'
 
 export interface DataQuery {
   sql: string

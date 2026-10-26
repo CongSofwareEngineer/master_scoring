@@ -32,7 +32,7 @@
      0..max, bằng chứng trỏ dòng không tồn tại) → gửi lỗi lại cho AI sửa. Lần 3 nới kiểm tra bằng chứng. Vẫn hỏng →
      `failed` "Hãy chấm tay".
 5. Gắn issue tự động vào tiêu chí cùng nguồn.
-6. **Ước lượng % code AI** + điểm trừ theo chính sách, **câu hỏi vấn đáp** nếu bật và % AI ≥ ngưỡng (lỗi bước này không
+6. **Ước lượng % code AI** + điểm trừ theo chính sách, **câu hỏi vấn đáp** nếu assignment bật (`questionsEnabled`) và % AI ≥ `questionsMinPercent` (lỗi bước này không
    làm hỏng kết quả) — xem `ai-estimate.md`, `ai-questions.md`.
 7. **Tổng điểm** = Σ điểm tiêu chí (ưu tiên điểm giáo viên đã sửa còn hợp lệ) − điểm trừ AI (nếu áp), không âm.
 8. **Fingerprint** cho so sánh trùng lặp.

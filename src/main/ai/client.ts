@@ -1,7 +1,5 @@
 // Giao diện gọi AI chung cho Local và Cloud (chuẩn OpenAI Chat Completions).
 // Phần chấm điểm chỉ viết một lần; khác nhau ở URL, key và tên model.
-import { CLOUD_PROVIDERS } from '@shared/constants'
-import type { CloudProvider } from '@shared/types'
 import { all, get, run } from '../db'
 import { netFetch } from '../netlog'
 import { readSecret, saveSecret } from '../secrets'
@@ -15,56 +13,99 @@ export interface ChatMessage {
 
 export interface BackendConfig {
   kind: 'local' | 'cloud'
-  provider?: CloudProvider
   baseUrl: string
   apiKey: string
   model: string
   label: string
 }
 
+// Cloud API: một cấu hình chung cho mỗi giáo viên — URL chuẩn OpenAI (DeepSeek, OpenRouter, Ollama, Kilo…),
+// API key (bảng secrets, tên CLOUD_SECRET) và tên model.
 export interface CloudConfig {
-  compatibleUrl: string
-  models: Partial<Record<CloudProvider, string>>
+  url: string
+  model: string
 }
 
-export function getCloudConfig(userId: number): CloudConfig {
-  const row = get<{ value: string }>("SELECT value FROM settings WHERE user_id = ? AND key = 'cloudConfig'", [userId])
-  const def: CloudConfig = { compatibleUrl: '', models: {} }
-  if (!row) return def
-  try {
-    return { ...def, ...JSON.parse(row.value) }
-  } catch {
-    return def
-  }
-}
+const CLOUD_SECRET = 'cloud:api'
 
-export function saveCloudConfig(userId: number, provider: CloudProvider, apiKey: string | null, model: string, compatibleUrl?: string): void {
-  const cfg = getCloudConfig(userId)
-  cfg.models[provider] = model
-  if (provider === 'compatible' && compatibleUrl !== undefined) cfg.compatibleUrl = compatibleUrl.trim().replace(/\/+$/, '')
+// Bản cũ chọn theo nhà cung cấp (gemini / openai / anthropic / compatible) → chuyển sang 1 URL chung
+const LEGACY_URLS: Record<string, string> = {
+  gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
+  openai: 'https://api.openai.com/v1',
+  anthropic: 'https://api.anthropic.com/v1',
+  compatible: ''
+}
+const LEGACY_MODELS: Record<string, string> = { gemini: 'gemini-2.5-flash', openai: 'gpt-4.1-mini', anthropic: 'claude-sonnet-5-5', compatible: '' }
+
+const normUrl = (u: string): string => u.trim().replace(/\/+$/, '').replace(/\/chat\/completions$/, '')
+
+function writeCloudConfig(userId: number, cfg: CloudConfig): void {
   run(
     "INSERT INTO settings (user_id, key, value) VALUES (?, 'cloudConfig', ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value",
     [userId, JSON.stringify(cfg)]
   )
-  if (apiKey !== null) saveSecret(userId, 'cloud:' + provider, apiKey)
 }
 
-export function configuredProviders(userId: number): CloudProvider[] {
-  return all<{ name: string }>("SELECT name FROM secrets WHERE user_id = ? AND name LIKE 'cloud:%'", [userId])
-    .map((r) => r.name.slice(6) as CloudProvider)
-    .filter((p) => p in CLOUD_PROVIDERS)
+function migrateLegacy(userId: number, raw: any): CloudConfig {
+  const names = all<{ name: string }>("SELECT name FROM secrets WHERE user_id = ? AND name LIKE 'cloud:%'", [userId]).map((r) => r.name.slice(6))
+  const pick = Object.keys(LEGACY_URLS).find((p) => (p === 'compatible' ? !!raw?.compatibleUrl : names.includes(p)))
+  const cfg: CloudConfig = { url: '', model: '' }
+  if (pick) {
+    cfg.url = pick === 'compatible' ? normUrl(String(raw.compatibleUrl)) : LEGACY_URLS[pick]
+    cfg.model = raw?.models?.[pick] || LEGACY_MODELS[pick]
+    const key = readSecret(userId, 'cloud:' + pick)
+    if (key) saveSecret(userId, CLOUD_SECRET, key)
+  }
+  for (const p of Object.keys(LEGACY_URLS)) if (names.includes(p)) saveSecret(userId, 'cloud:' + p, '')
+  writeCloudConfig(userId, cfg)
+  return cfg
 }
 
-export function cloudBackend(userId: number, provider: CloudProvider, model?: string): BackendConfig {
+export function getCloudConfig(userId: number): CloudConfig {
+  const row = get<{ value: string }>("SELECT value FROM settings WHERE user_id = ? AND key = 'cloudConfig'", [userId])
+  let raw: any = null
+  try {
+    raw = row ? JSON.parse(row.value) : null
+  } catch {
+    /* hỏng → coi như chưa có */
+  }
+  if (raw && typeof raw.url === 'string') return { url: raw.url, model: typeof raw.model === 'string' ? raw.model : '' }
+  // Chưa có cấu hình mới: chuyển cấu hình theo nhà cung cấp cũ (nếu có)
+  if (raw || listCloudSecrets(userId).length) return migrateLegacy(userId, raw)
+  return { url: '', model: '' }
+}
+
+function listCloudSecrets(userId: number): string[] {
+  return all<{ name: string }>("SELECT name FROM secrets WHERE user_id = ? AND name LIKE 'cloud:%' AND name <> ?", [userId, CLOUD_SECRET]).map((r) => r.name)
+}
+
+/** apiKey = null → giữ key cũ; '' → xoá key (API như Ollama không cần key). */
+export function saveCloudConfig(userId: number, url: string, model: string, apiKey: string | null): void {
+  getCloudConfig(userId) // chuyển cấu hình cũ trước để không ghi đè lẫn nhau
+  writeCloudConfig(userId, { url: normUrl(url), model: model.trim() })
+  if (apiKey !== null) saveSecret(userId, CLOUD_SECRET, apiKey.trim())
+}
+
+export function cloudConfigured(userId: number): boolean {
   const cfg = getCloudConfig(userId)
-  const apiKey = readSecret(userId, 'cloud:' + provider)
-  const meta = CLOUD_PROVIDERS[provider]
-  const baseUrl = provider === 'compatible' ? cfg.compatibleUrl : meta.baseUrl
-  if (!baseUrl) throw new Error('Chưa nhập URL cho OpenAI-compatible')
-  if (!apiKey && provider !== 'compatible') throw new Error(`Chưa cấu hình API key cho ${meta.name}`)
-  const m = model || cfg.models[provider] || meta.defaultModel
-  if (!m) throw new Error('Chưa chọn model Cloud')
-  return { kind: 'cloud', provider, baseUrl, apiKey, model: m, label: `Cloud: ${meta.name}` }
+  return !!cfg.url && !!cfg.model
+}
+
+export function cloudHasKey(userId: number): boolean {
+  return !!get('SELECT 1 FROM secrets WHERE user_id = ? AND name = ?', [userId, CLOUD_SECRET])
+}
+
+export function cloudBackend(userId: number): BackendConfig {
+  const cfg = getCloudConfig(userId)
+  if (!cfg.url) throw new Error('Chưa nhập URL cho Cloud API')
+  if (!cfg.model) throw new Error('Chưa nhập tên model cho Cloud API')
+  let host = cfg.url
+  try {
+    host = new URL(cfg.url).host
+  } catch {
+    throw new Error('URL Cloud API không hợp lệ: ' + cfg.url)
+  }
+  return { kind: 'cloud', baseUrl: cfg.url, apiKey: readSecret(userId, CLOUD_SECRET), model: cfg.model, label: `Cloud API: ${host}` }
 }
 
 export function localBackend(): BackendConfig {
@@ -121,13 +162,21 @@ export function messageText(content: unknown): string | null {
   return null
 }
 
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname
+  } catch {
+    return ''
+  }
+}
+
 // Gửi một request /chat/completions tới Local hoặc Cloud, trả về `choices[0].message` (chuẩn OpenAI).
 // Xử lý chung: header theo nhà cung cấp, timeout, huỷ, 429 thử lại, bỏ response_format khi không hỗ trợ.
 export async function postCompletion(backend: BackendConfig, payload: Record<string, any>, signal?: AbortSignal): Promise<any> {
   const body = { ...payload }
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (backend.apiKey) headers.Authorization = `Bearer ${backend.apiKey}`
-  if (backend.provider === 'anthropic') {
+  if (/(^|\.)anthropic\.com$/i.test(hostOf(backend.baseUrl))) {
     headers['x-api-key'] = backend.apiKey
     headers['anthropic-version'] = '2023-06-01'
   }
@@ -188,9 +237,8 @@ export async function chat(backend: BackendConfig, messages: ChatMessage[], opts
   if (opts.jsonSchema) {
     if (backend.kind === 'local') {
       body.response_format = { type: 'json_schema', json_schema: { name: 'grading', schema: opts.jsonSchema } }
-    } else if (backend.provider === 'openai' || backend.provider === 'gemini') {
-      body.response_format = { type: 'json_schema', json_schema: { name: 'grading', schema: opts.jsonSchema } }
-    } else if (backend.provider === 'compatible') {
+    } else {
+      // Cloud API chung: json_object được hầu hết nhà cung cấp hỗ trợ; không hỗ trợ → postCompletion gửi lại không kèm
       body.response_format = { type: 'json_object' }
     }
   }

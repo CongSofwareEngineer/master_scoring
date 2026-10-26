@@ -1,7 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Bot, Calculator, Eraser, FileSpreadsheet, FolderOpen, Maximize2, Minimize2, PanelRightClose, PanelRightOpen, Search, Send, Square, Trash2, User as UserIcon, X } from 'lucide-react'
-import { CLOUD_PROVIDERS } from '@shared/constants'
-import type { CloudProvider, DataBackendChoice, DataChatState, DataChatTurn, DataColumn, DataPreview, DataQuery, DataTable } from '@shared/types'
+import type { DataBackendChoice, DataChatState, DataChatTurn, DataColumn, DataPreview, DataQuery, DataTable } from '@shared/types'
 import { call, on } from '../lib/api'
 import { cls } from '../lib/format'
 import { useT } from '../lib/i18n'
@@ -499,13 +498,13 @@ function ChatPanel({
   const [step, setStep] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
 
-  const cloud: CloudProvider[] = ai?.cloudConfigured ?? []
+  const cloud = !!ai?.cloudConfigured
   const localReady = ai?.local.kind === 'ready'
-  const [choice, setChoice] = useState<DataBackendChoice>(() => readBackend() ?? (localReady || !cloud.length ? 'local' : cloud[0]))
-  // Lựa chọn cũ không còn dùng được (vd. xoá key Cloud) → chọn AI khả dụng đầu tiên
+  const [choice, setChoice] = useState<DataBackendChoice>(() => readBackend() ?? (localReady || !cloud ? 'local' : 'cloud'))
+  // Lựa chọn cũ không còn dùng được (vd. xoá cấu hình Cloud, lưu tên nhà cung cấp kiểu cũ) → chọn AI khả dụng
   useEffect(() => {
-    if (choice !== 'local' && !cloud.includes(choice)) setChoice(localReady || !cloud.length ? 'local' : cloud[0])
-  }, [choice, cloud.join(','), localReady])
+    if (choice !== 'local' && (choice !== 'cloud' || !cloud)) setChoice(localReady || !cloud ? 'local' : 'cloud')
+  }, [choice, cloud, localReady])
 
   useEffect(
     () =>
@@ -579,11 +578,7 @@ function ChatPanel({
           disabled={busy}
         >
           <option value="local">Local AI{localReady ? '' : ` (${t('chưa sẵn sàng')})`}</option>
-          {cloud.map((p) => (
-            <option key={p} value={p}>
-              Cloud: {CLOUD_PROVIDERS[p].name}
-            </option>
-          ))}
+          {cloud && <option value="cloud">Cloud API</option>}
         </select>
       </div>
       {choice !== 'local' && (

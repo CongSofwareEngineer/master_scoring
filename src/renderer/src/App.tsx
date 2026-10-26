@@ -77,7 +77,7 @@ export default function App(): JSX.Element {
       const ai = await call<AiStatus>('ai:status')
       setAi(ai)
       setQueue(await call<QueueState>('queue:state'))
-      const needsSetup = ai.local.kind === 'not_installed' && ai.cloudConfigured.length === 0 && !skippedSetup(user.id)
+      const needsSetup = ai.local.kind === 'not_installed' && !ai.cloudConfigured && !skippedSetup(user.id)
       setPhase(needsSetup ? 'setup' : 'main')
     })()
     // Chỉ chạy lại khi đổi người dùng (đổi tên/mật khẩu không tải lại toàn bộ)

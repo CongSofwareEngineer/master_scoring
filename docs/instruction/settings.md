@@ -12,7 +12,8 @@
 - `getSettings(userId)` = `DEFAULT_SETTINGS` ← global ← key riêng của user. `modelsDir` trống → `paths.models`.
 - `updateSettings` bỏ qua key không có trong `DEFAULT_SETTINGS`.
 - Một số key nội bộ cũng nằm trong bảng `settings` nhưng không thuộc `AppSettings`: `queueState` (user 0),
-  `cloudConfig` (theo user).
+  `cloudConfig` (theo user, `{ url, model }` — xem `cloud-ai.md`).
+- Câu hỏi vấn đáp không còn nằm trong Cài đặt — bật theo từng assignment (xem `ai-questions.md`).
 - Trang Settings có các tab: Chung, Tài khoản, Dữ liệu, Kết nối mạng, Giới thiệu.
 - **`contextSize`** (theo máy, chọn ở AI Models): mặc định **32K** (`DEFAULT_CONTEXT`), lựa chọn `CONTEXT_OPTIONS` = 8K,
   16K, 32K, 100K, 150K, 200K. Dùng đúng giá trị chọn cho cả Local AI và Cloud AI, tối đa
@@ -20,8 +21,7 @@
   (option lạ vẫn hiện trong danh sách).
 - Các nhóm cài đặt chính: ngôn ngữ; Local AI (`contextSize`, `llamaVariant`, `gpuLayers`, `threads`, `modelsDir`,
   `activeModelId`); `preventSleep`; giới hạn giải nén (`maxUnzipMb`, `maxFiles`); trùng lặp (`similarityEnabled`
-  mặc định tắt, `similarityThreshold` 30–100); câu hỏi vấn đáp (`aiQuestionsEnabled` mặc định tắt,
-  `aiQuestionsMinPercent`); `anonymizeCloud`; đường dẫn công cụ (`androidSdkPath`, `jdkPath`, `mingwPath`, `solcPath`,
+  mặc định tắt, `similarityThreshold` 30–100); `anonymizeCloud`; đường dẫn công cụ (`androidSdkPath`, `jdkPath`, `mingwPath`, `solcPath`,
   `forgePath`).
 
 ## Lưu ý / giới hạn

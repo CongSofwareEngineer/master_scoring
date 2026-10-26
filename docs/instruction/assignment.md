@@ -25,8 +25,10 @@
 - **Rubric mẫu:** giáo viên lưu rubric hiện tại thành template (`rubric_templates`) để dùng lại.
 - **Test case (C/C++):** `input`, `expected`; tuỳ chọn `ignoreWhitespace`, `timeLimitMs` (mặc định 2000),
   `memoryLimitMb` (256).
-- **Backend:** `local` hoặc `cloud` (+ `cloudProvider`, `cloudModel`, `cloudConsent` — bắt buộc tick đồng ý gửi code ra
-  ngoài).
+- **Backend:** `local` hoặc `cloud` (Cloud API chung của giáo viên: chọn Cloud API → form URL / API key / model hiện ngay
+  bên dưới, xem [cloud-ai.md](cloud-ai.md); `cloudConsent` — bắt buộc tick đồng ý gửi code ra ngoài).
+- **Câu hỏi vấn đáp:** `questionsEnabled` (mặc định tắt) + `questionsMinPercent` (mặc định 0), công tắc ở tab Thông tin
+  (chỉ bài code). Xem [ai-questions.md](ai-questions.md).
 - **Đường dẫn:** `submissionsDir` (chọn folder), `starterDir` (code khung: folder hoặc 1 file nén — hộp chọn file nhận mọi đuôi trong `SUPPORTED_EXTS`, đọc như bài nộp).
 - Lưu assignment mà `aiPolicy` thay đổi → `recomputePenalties()` tính lại điểm trừ + tổng điểm các bài đã chấm.
 - Xoá assignment → xoá students, results, integrity_pairs liên quan.

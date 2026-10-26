@@ -35,7 +35,7 @@ export function backendFor(a: Assignment): BackendConfig {
     if (!a.cloudConsent) throw new Error('Assignment dùng Cloud AI nhưng chưa xác nhận đồng ý gửi code ra ngoài')
     const owner = assignmentOwner(a.id)
     if (!owner) throw new Error('Không xác định được chủ assignment')
-    return cloudBackend(owner, a.cloudProvider, a.cloudModel)
+    return cloudBackend(owner)
   }
   return localBackend()
 }
@@ -477,9 +477,9 @@ export async function gradeStudent(
     aiSignal = { level: levelFromEstimate(estimate), signals: aiSignal?.signals ?? [], estimate }
     const penalty = evaluatePenalty(a.aiPolicy, estimate, prev.aiPenalty)
 
-    // 6b. Bài % code AI cao → AI đề xuất câu hỏi vấn đáp (tuỳ chọn, mặc định tắt). Lỗi ở bước này không làm hỏng kết quả chấm.
+    // 6b. AI tự tạo câu hỏi vấn đáp dựa vào code (tuỳ chọn theo assignment, mặc định tắt). Lỗi ở bước này không làm hỏng kết quả chấm.
     let aiQuestions: AiQuestions | null = prev.aiQuestions
-    if (!report && settings.aiQuestionsEnabled && estimate.aiPercent >= settings.aiQuestionsMinPercent) {
+    if (!report && a.questionsEnabled && estimate.aiPercent >= a.questionsMinPercent) {
       if (signal.aborted) throw new Error('Đã huỷ')
       onStep('AI đề xuất câu hỏi vấn đáp')
       try {

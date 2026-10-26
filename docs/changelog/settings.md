@@ -8,3 +8,4 @@
 - 2026-10-07 | Sửa | Context (token): mặc định 8K → 32K, thêm lựa chọn 100K / 150K / 200K (bỏ 4K, 12K), áp dụng cho cả Cloud và Local (tối đa 32K) — 32K quá ít khi chấm bằng API LLM
 - 2026-10-09 | Sửa | Cài đặt: thêm khoá `solcPath`, `forgePath` (đường dẫn công cụ Solidity/Foundry, theo máy) — hỗ trợ chấm compile/test bài Solidity
 - 2026-10-16 | Sửa | Context (token): trần chung `MAX_CONTEXT` = 200K cho cả Local AI và Cloud AI (thay `LOCAL_MAX_CONTEXT` 32K), bỏ nhãn "— Cloud AI" trên các mức > 32K — yêu cầu max context 200K áp dụng cho cả Local lẫn Cloud
+- 2026-10-26 | Sửa | Cài đặt: bỏ `aiQuestionsEnabled` / `aiQuestionsMinPercent` và khối câu hỏi vấn đáp ở tab Chung; `cloudConfig` đổi sang `{ url, model }` — câu hỏi vấn đáp chuyển sang từng assignment, Cloud chỉ còn 1 URL chung

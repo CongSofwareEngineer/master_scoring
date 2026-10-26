@@ -6,7 +6,7 @@ import { call, platform } from '../lib/api'
 import { fmtBytes } from '../lib/format'
 import { useT } from '../lib/i18n'
 import { attempt, useStore } from '../lib/store'
-import { CloudConfigForm, HardwareLine, LocalStatePanel, useHardware } from '../components/AiWidgets'
+import { CloudApiToggle, HardwareLine, LocalStatePanel, useHardware } from '../components/AiWidgets'
 import { confirmDialog, Field, localStateView } from '../components/ui'
 
 export function AiModelsPage(): JSX.Element {
@@ -196,11 +196,11 @@ export function AiModelsPage(): JSX.Element {
         <div className="card">
           <div className="card-header">
             <span className="card-title">
-              <Cloud size={14} style={{ verticalAlign: -2 }} /> Cloud AI (tuỳ chọn)
+              <Cloud size={14} style={{ verticalAlign: -2 }} /> Cloud API (tuỳ chọn)
             </span>
           </div>
-          <div className="meta mb-12">Tắt mặc định. Chỉ dùng cho assignment bạn bật Cloud AI riêng. API key lưu bằng Windows DPAPI.</div>
-          <CloudConfigForm />
+          <div className="meta mb-12">Tắt mặc định. Một URL chung (chuẩn OpenAI) cho mọi nhà cung cấp; chỉ dùng cho assignment chọn Cloud API. API key lưu mã hoá theo tài khoản hệ điều hành.</div>
+          <CloudApiToggle />
         </div>
       </div>
     </div>

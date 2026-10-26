@@ -18,7 +18,6 @@ import {
   Sheet,
   Users
 } from 'lucide-react'
-import { CLOUD_PROVIDERS } from '@shared/constants'
 import type { User } from '@shared/types'
 import { call, platform } from '../lib/api'
 import { cls } from '../lib/format'
@@ -106,9 +105,9 @@ function AiIndicator(): JSX.Element {
   const a = useCurrentAssignment()
   let view = localStateView(ai?.local)
   if (a?.backend === 'cloud' && a.rubric.some((c) => c.source === 'ai')) {
-    const configured = ai?.cloudConfigured.includes(a.cloudProvider)
+    const configured = !!ai?.cloudConfigured
     view = {
-      label: `Cloud: ${CLOUD_PROVIDERS[a.cloudProvider].name}${configured ? '' : ' (chưa cấu hình)'}`,
+      label: configured ? 'Cloud API' : 'Cloud API (chưa cấu hình)',
       color: configured ? 'var(--warning)' : 'var(--error)',
       pulse: false
     }

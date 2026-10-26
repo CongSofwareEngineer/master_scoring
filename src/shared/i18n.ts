@@ -380,7 +380,24 @@ export const EN: Record<string, string> = {
   'Khác ({n})': 'Other ({n})',
   'Bỏ {n} nhóm có giá trị ≤ 0': '{n} groups with values ≤ 0 omitted',
   'Chỉ vẽ {n} dòng đầu / {total}': 'Showing the first {n} of {total} rows',
-  'Trục trái: {a} · Trục phải: {b}': 'Left axis: {a} · Right axis: {b}'
+  'Trục trái: {a} · Trục phải: {b}': 'Left axis: {a} · Right axis: {b}',
+  // Cloud API chung (URL + API key + model)
+  'Dùng Cloud API': 'Use Cloud API',
+  'đã cấu hình': 'configured',
+  'nhập URL, API key, model của bất kỳ API chuẩn OpenAI nào': 'enter the URL, API key and model of any OpenAI-compatible API',
+  'URL API (chuẩn OpenAI — DeepSeek, OpenRouter, Kilo, OpenCode, 9Router, Ollama…)': 'API URL (OpenAI-compatible — DeepSeek, OpenRouter, Kilo, OpenCode, 9Router, Ollama…)',
+  'vd. deepseek-chat, qwen2.5-coder:7b': 'e.g. deepseek-chat, qwen2.5-coder:7b',
+  'đã lưu (mã hoá)': 'saved (encrypted)',
+  '•••••••• (để trống nếu không đổi)': '•••••••• (leave empty to keep)',
+  'Nhập API key (bỏ trống nếu API không cần key)': 'Enter API key (leave empty if the API needs none)',
+  'Xoá key': 'Remove key',
+  'Đã xoá API key': 'API key removed',
+  'Đã lưu cấu hình Cloud API': 'Cloud API settings saved',
+  'Kết nối thành công · phản hồi:': 'Connected · reply:',
+  'Code sinh viên sẽ được gửi tới máy chủ API (đã ẩn họ tên và MSSV). Chỉ dùng cho assignment bạn chọn Cloud API.':
+    'Student code will be sent to the API server (names and student IDs hidden). Only used for assignments set to Cloud API.',
+  'Cloud API': 'Cloud API',
+  'Cloud API (chưa cấu hình)': 'Cloud API (not configured)'
 }
 
 export function translate(lang: string, s: string, vars?: Record<string, string | number>): string {

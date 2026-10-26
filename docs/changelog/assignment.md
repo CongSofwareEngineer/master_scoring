@@ -8,3 +8,4 @@
 - 2026-10-07 | Sửa | Code khung (starter code): hộp chọn file nhận mọi định dạng nén hỗ trợ (.zip .rar .7z .tar.gz .iso .dmg…), không chỉ .zip — đồng bộ với bài nộp đọc qua 7-Zip
 - 2026-10-07 | Sửa | Assignment: thêm `kind` (code / report) và `reportCheck`; `validateRubric` chặn nguồn compile/test cho báo cáo; tab Test case ↔ Kiểm tra hình thức theo loại bài — hỗ trợ chấm báo cáo .docx
 - 2026-10-26 | Sửa | Assignment: thêm `submissionSource` (file nén / link Git / cả hai) và ô chọn "Nguồn bài nộp" ở form tạo + tab Thông tin — mỗi lớp tự chọn nộp file nén hay nộp link repo Git
+- 2026-10-26 | Sửa | Assignment: thêm `questionsEnabled` / `questionsMinPercent` (công tắc "Tự tạo câu hỏi vấn đáp dựa vào bài code", mặc định tắt); backend Cloud bỏ chọn nhà cung cấp / model, hiện form Cloud API chung (URL + key + model) — tuỳ chọn câu hỏi theo từng bài tập và Cloud chỉ còn 1 URL chung

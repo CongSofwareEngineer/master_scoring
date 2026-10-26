@@ -99,8 +99,9 @@ export function CodeReviewPage(): JSX.Element {
   const pendingJump = useRef<number | null>(null)
   const [editing, setEditing] = useState(false)
   const [tab, setTab] = useState<PanelTab>(params.tab === 'questions' ? 'questions' : 'criteria')
-  const questionsOn = useStore((s) => !!s.settings?.aiQuestionsEnabled)
-  const questionsMin = useStore((s) => s.settings?.aiQuestionsMinPercent ?? 60)
+  // Câu hỏi vấn đáp bật theo từng assignment (chỉ bài chấm code)
+  const questionsOn = !!a && a.kind !== 'report' && a.questionsEnabled
+  const questionsMin = a?.questionsMinPercent ?? 0
   const [generating, setGenerating] = useState(false)
   const [search, setSearch] = useState('')
   const [hits, setHits] = useState<{ file: string; line: number; text: string }[] | null>(null)

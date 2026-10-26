@@ -22,7 +22,7 @@ export function IntegrityPage(): JSX.Element {
   const go = useStore((s) => s.go)
   const threshold = useStore((s) => s.settings?.similarityThreshold ?? 70)
   const enabled = useStore((s) => !!s.settings?.similarityEnabled)
-  const questionsOn = useStore((s) => !!s.settings?.aiQuestionsEnabled)
+  const questionsOn = !!a && a.kind !== 'report' && a.questionsEnabled
   const updateSettings = useStore((s) => s.updateSettings)
   const [tab, setTab] = useState<Tab>(params.tab === 'ai' || params.tab === 'stats' ? params.tab : 'similarity')
   const [data, setData] = useState<IntegrityOverview | null>(null)

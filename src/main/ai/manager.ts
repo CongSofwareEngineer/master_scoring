@@ -2,7 +2,7 @@
 import type { AiStatus } from '@shared/types'
 import { emit } from '../events'
 import { getSettings, updateSettings } from '../settings'
-import { configuredProviders } from './client'
+import { cloudConfigured } from './client'
 import { getLocalState, runtimeAvailable, setLocalState, startLocal, stopLocal } from './llama'
 import { currentDownload, downloadModel, isInstalled, pauseDownload } from './models'
 
@@ -13,7 +13,7 @@ export async function aiStatus(userId: number | null): Promise<AiStatus> {
   return {
     local,
     activeModelId: s.activeModelId,
-    cloudConfigured: userId ? configuredProviders(userId) : [],
+    cloudConfigured: userId ? cloudConfigured(userId) : false,
     runtimeAvailable: await runtimeAvailable()
   }
 }

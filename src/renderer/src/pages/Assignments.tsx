@@ -18,14 +18,15 @@ import {
   X
 } from 'lucide-react'
 import { evaluatePenalty } from '@shared/aiPolicy'
-import { AUTO_PROFILE_ID, CLOUD_PROVIDERS, DEFAULT_AI_POLICY, DEFAULT_REPORT_CHECK, REPORT_PROFILE, REPORT_RUBRIC } from '@shared/constants'
-import type { AiConfidence, AiEstimate, AiPenaltyMode, AiPolicy, Assignment, AssignmentKind, CloudProvider, Criterion, ReportCheck, ScanSummary, StudentRow, SubmissionSource, TestCase } from '@shared/types'
+import { AUTO_PROFILE_ID, DEFAULT_AI_POLICY, DEFAULT_REPORT_CHECK, REPORT_PROFILE, REPORT_RUBRIC } from '@shared/constants'
+import type { AiConfidence, AiEstimate, AiPenaltyMode, AiPolicy, Assignment, AssignmentKind, Criterion, ReportCheck, ScanSummary, StudentRow, SubmissionSource, TestCase } from '@shared/types'
 import { call, on } from '../lib/api'
 import { cls, uid } from '../lib/format'
 import { useT } from '../lib/i18n'
 import { attempt, useStore } from '../lib/store'
 import { resetAndRegrade } from '../components/AssignmentFilter'
 import { RubricEditor } from '../components/RubricEditor'
+import { CloudConfigForm } from '../components/AiWidgets'
 import { confirmDialog, Empty, Field, Modal, Switch } from '../components/ui'
 
 type Tab = 'info' | 'rubric' | 'tests' | 'format' | 'ai' | 'submissions'
@@ -320,8 +321,7 @@ function AssignmentEditor({ id, initialTab }: { id: number; initialTab: Tab }): 
 function InfoTab({ draft, patch }: { draft: Assignment; patch: (p: Partial<Assignment>) => void }): JSX.Element {
   const profiles = useStore((s) => s.profiles)
   const ai = useStore((s) => s.ai)
-  const go = useStore((s) => s.go)
-  const cloudOk = ai?.cloudConfigured.includes(draft.cloudProvider)
+  const cloudOk = !!ai?.cloudConfigured
   const report = draft.kind === 'report'
   const changeKind = async (kind: AssignmentKind): Promise<void> => {
     if (kind === draft.kind) return
@@ -389,48 +389,21 @@ function InfoTab({ draft, patch }: { draft: Assignment; patch: (p: Partial<Assig
           </label>
           <label className="check">
             <input type="radio" checked={draft.backend === 'cloud'} onChange={() => patch({ backend: 'cloud', cloudConsent: false })} />
-            Cloud AI — chỉ khi cần model mạnh hơn (project lớn, nhiều file)
+            Cloud API — một URL chuẩn OpenAI (DeepSeek, OpenRouter, Kilo, OpenCode, Ollama…), dùng khi cần model mạnh hơn
           </label>
           {draft.backend === 'cloud' && (
             <div className="choice-card" style={{ marginLeft: 24 }}>
-              <div className="form-grid">
-                <Field label="Nhà cung cấp">
-                  <select className="select" value={draft.cloudProvider} onChange={(e) => patch({ cloudProvider: e.target.value as CloudProvider, cloudConsent: false })}>
-                    {(Object.keys(CLOUD_PROVIDERS) as CloudProvider[]).map((p) => (
-                      <option key={p} value={p}>
-                        {CLOUD_PROVIDERS[p].name}
-                        {ai?.cloudConfigured.includes(p) ? ' ✓' : ' (chưa cấu hình)'}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Model" hint="Để trống = model mặc định đã lưu trong AI Models">
-                  <input
-                    className="input"
-                    list="assign-cloud-models"
-                    value={draft.cloudModel}
-                    onChange={(e) => patch({ cloudModel: e.target.value })}
-                    placeholder={CLOUD_PROVIDERS[draft.cloudProvider].defaultModel}
-                  />
-                  <datalist id="assign-cloud-models">
-                    {CLOUD_PROVIDERS[draft.cloudProvider].models.map((m) => (
-                      <option key={m} value={m} />
-                    ))}
-                  </datalist>
-                </Field>
-              </div>
+              <CloudConfigForm />
               {!cloudOk && (
                 <div className="callout error mt-12">
                   <AlertTriangle size={16} />
-                  <span>
-                    Chưa cấu hình API key cho {CLOUD_PROVIDERS[draft.cloudProvider].name}. <a onClick={() => go('models')}>Mở AI Models</a>
-                  </span>
+                  <span>Chưa cấu hình Cloud API — nhập URL và model ở trên rồi bấm Lưu.</span>
                 </div>
               )}
               <div className="callout warning mt-12">
                 <AlertTriangle size={16} />
                 <div className="col gap-8">
-                  <span>{report ? 'Báo cáo' : 'Code'} của sinh viên trong assignment này sẽ được gửi tới máy chủ của nhà cung cấp (họ tên và MSSV được ẩn nếu bật trong Settings).</span>
+                  <span>{report ? 'Báo cáo' : 'Code'} của sinh viên trong assignment này sẽ được gửi tới máy chủ API (họ tên và MSSV được ẩn nếu bật trong Settings).</span>
                   <label className="check">
                     <input type="checkbox" checked={draft.cloudConsent} onChange={(e) => patch({ cloudConsent: e.target.checked })} />
                     <b>Tôi đồng ý</b>
@@ -441,6 +414,33 @@ function InfoTab({ draft, patch }: { draft: Assignment; patch: (p: Partial<Assig
           )}
         </div>
       </div>
+      {!report && (
+        <div className="col gap-8">
+          <Switch
+            checked={draft.questionsEnabled}
+            onChange={(v) => patch({ questionsEnabled: v })}
+            label="Tự tạo câu hỏi vấn đáp dựa vào bài code"
+          />
+          <div className="meta">
+            Khi chấm, AI soạn sẵn ~6 câu hỏi bám vào code của từng sinh viên (file / dòng cụ thể) để giảng viên hỏi trực tiếp. Tốn thêm 1 lượt gọi AI
+            cho mỗi bài. Mặc định tắt.
+          </div>
+          {draft.questionsEnabled && (
+            <div className="form-grid">
+              <Field label="Chỉ tạo khi % code AI ≥" hint="0 = tạo cho mọi bài; 60 = chỉ bài nghi dùng AI nhiều">
+                <input
+                  className="input"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={draft.questionsMinPercent}
+                  onChange={(e) => patch({ questionsMinPercent: Number(e.target.value) })}
+                />
+              </Field>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

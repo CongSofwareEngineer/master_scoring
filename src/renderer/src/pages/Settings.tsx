@@ -96,31 +96,6 @@ function General(): JSX.Element {
           </div>
         )}
       </div>
-      <div className="col gap-8">
-        <Switch
-          checked={draft.aiQuestionsEnabled}
-          onChange={(v) => setDraft({ ...draft, aiQuestionsEnabled: v })}
-          label="AI đề xuất câu hỏi vấn đáp cho bài có tỉ lệ code AI cao"
-        />
-        <div className="meta">
-          Khi chấm, bài có % code AI (ước lượng) từ ngưỡng trở lên sẽ được AI soạn sẵn ~6 câu hỏi bám vào các đoạn nghi ngờ, để giảng viên hỏi trực tiếp sinh viên.
-          Tốn thêm 1 lượt gọi AI cho mỗi bài đạt ngưỡng.
-        </div>
-        {draft.aiQuestionsEnabled && (
-          <div className="form-grid">
-            <Field label="Ngưỡng % code AI" hint="Mặc định 60% (mức tín hiệu Cao)">
-              <input
-                className="input"
-                type="number"
-                min={0}
-                max={100}
-                value={draft.aiQuestionsMinPercent}
-                onChange={(e) => setDraft({ ...draft, aiQuestionsMinPercent: Number(e.target.value) })}
-              />
-            </Field>
-          </div>
-        )}
-      </div>
       <div className="divider" />
       <Switch checked={draft.preventSleep} onChange={(v) => setDraft({ ...draft, preventSleep: v })} label="Ngăn Windows chuyển sang Sleep khi đang chấm" />
       <Switch

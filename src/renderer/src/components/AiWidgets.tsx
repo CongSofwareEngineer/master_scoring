@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, CheckCircle2, Cpu, Download, FolderOpen, Pause, Play, RotateCcw, Upload, XCircle } from 'lucide-react'
-import { CLOUD_PROVIDERS, MODELS } from '@shared/constants'
-import type { CloudProvider, HardwareInfo, LocalState } from '@shared/types'
+import { MODELS } from '@shared/constants'
+import type { HardwareInfo, LocalState } from '@shared/types'
 import { call } from '../lib/api'
 import { fmtBytes, fmtDuration } from '../lib/format'
 import { useT } from '../lib/i18n'
@@ -170,35 +170,41 @@ export function LocalAiSetupCard(): JSX.Element {
   )
 }
 
-/** Cấu hình một nhà cung cấp Cloud AI (key lưu bằng DPAPI ở main process). */
-export function CloudConfigForm({ initialProvider = 'gemini' }: { initialProvider?: CloudProvider }): JSX.Element {
+// Gợi ý URL (chuẩn OpenAI Chat Completions) — giáo viên tự nhập URL khác tuỳ ý
+const URL_HINTS = [
+  'https://api.deepseek.com/v1',
+  'https://openrouter.ai/api/v1',
+  'https://api.openai.com/v1',
+  'https://generativelanguage.googleapis.com/v1beta/openai',
+  'http://localhost:11434/v1'
+]
+
+/** Cấu hình Cloud API chung: URL + API key + model (key lưu mã hoá ở main process). */
+export function CloudConfigForm(): JSX.Element {
   const t = useT()
   const toast = useStore((s) => s.toast)
-  const [provider, setProvider] = useState<CloudProvider>(initialProvider)
-  const [apiKey, setApiKey] = useState('')
-  const [model, setModel] = useState('')
   const [url, setUrl] = useState('')
-  const [configured, setConfigured] = useState<CloudProvider[]>([])
+  const [model, setModel] = useState('')
+  const [apiKey, setApiKey] = useState('')
+  const [hasKey, setHasKey] = useState(false)
   const [testing, setTesting] = useState(false)
   const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null)
 
   const load = async (): Promise<void> => {
-    const cfg = await call<{ compatibleUrl: string; models: Partial<Record<CloudProvider, string>>; configured: CloudProvider[] }>('ai:cloudConfig')
-    setConfigured(cfg.configured)
-    setModel(cfg.models[provider] || CLOUD_PROVIDERS[provider].defaultModel)
-    setUrl(cfg.compatibleUrl)
+    const cfg = await call<{ url: string; model: string; hasKey: boolean }>('ai:cloudConfig')
+    setUrl(cfg.url)
+    setModel(cfg.model)
+    setHasKey(cfg.hasKey)
     setApiKey('')
-    setResult(null)
   }
   useEffect(() => {
     void load().catch(() => {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [provider])
+  }, [])
 
   const save = async (): Promise<void> => {
     try {
-      await call('ai:saveCloud', provider, apiKey ? apiKey : null, model, provider === 'compatible' ? url : undefined)
-      toast('Đã lưu cấu hình Cloud AI', 'success')
+      await call('ai:saveCloud', url, model, apiKey ? apiKey : null)
+      toast(t('Đã lưu cấu hình Cloud API'), 'success')
       await load()
     } catch (e: any) {
       toast(e.message, 'error')
@@ -208,8 +214,8 @@ export function CloudConfigForm({ initialProvider = 'gemini' }: { initialProvide
     setTesting(true)
     setResult(null)
     try {
-      const out = await call<string>('ai:testCloud', provider, apiKey ? apiKey : null, model, provider === 'compatible' ? url : undefined)
-      setResult({ ok: true, msg: `Kết nối thành công · phản hồi: "${out}"` })
+      const out = await call<string>('ai:testCloud', url, model, apiKey ? apiKey : null)
+      setResult({ ok: true, msg: `${t('Kết nối thành công · phản hồi:')} "${out}"` })
       await load()
     } catch (e: any) {
       setResult({ ok: false, msg: e.message })
@@ -218,60 +224,48 @@ export function CloudConfigForm({ initialProvider = 'gemini' }: { initialProvide
     }
   }
   const removeKey = async (): Promise<void> => {
-    await attempt(() => call('ai:saveCloud', provider, '', model), 'Đã xoá API key')
+    await attempt(() => call('ai:saveCloud', url, model, ''), t('Đã xoá API key'))
     await load()
   }
-  const isConfigured = configured.includes(provider)
   return (
     <div className="col gap-12">
+      <div className="field">
+        <label>{t('URL API (chuẩn OpenAI — DeepSeek, OpenRouter, Kilo, OpenCode, 9Router, Ollama…)')}</label>
+        <input className="input mono" list="cloud-url-hints" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://.../v1" />
+        <datalist id="cloud-url-hints">
+          {URL_HINTS.map((u) => (
+            <option key={u} value={u} />
+          ))}
+        </datalist>
+      </div>
       <div className="form-grid">
         <div className="field">
-          <label>{t('Nhà cung cấp')}</label>
-          <select className="select" value={provider} onChange={(e) => setProvider(e.target.value as CloudProvider)}>
-            {(Object.keys(CLOUD_PROVIDERS) as CloudProvider[]).map((p) => (
-              <option key={p} value={p}>
-                {CLOUD_PROVIDERS[p].name}
-                {configured.includes(p) ? ' ✓' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
           <label>Model</label>
-          <input className="input" list={'models-' + provider} value={model} onChange={(e) => setModel(e.target.value)} placeholder="Tên model" />
-          <datalist id={'models-' + provider}>
-            {CLOUD_PROVIDERS[provider].models.map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
+          <input className="input mono" value={model} onChange={(e) => setModel(e.target.value)} placeholder={t('vd. deepseek-chat, qwen2.5-coder:7b')} />
         </div>
-      </div>
-      {provider === 'compatible' && (
         <div className="field">
-          <label>Base URL (chuẩn OpenAI, ví dụ http://192.168.1.10:8000/v1)</label>
-          <input className="input mono" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://.../v1" />
-        </div>
-      )}
-      <div className="field">
-        <label>API Key {isConfigured && <span className="success">· đã lưu (mã hoá DPAPI)</span>}</label>
-        <div className="row">
-          <input
-            className="input mono"
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder={isConfigured ? '•••••••••••• (để trống nếu không đổi)' : 'Nhập API key'}
-          />
-          {isConfigured && (
-            <button className="btn btn-ghost btn-sm" onClick={removeKey}>
-              Xoá key
-            </button>
-          )}
+          <label>
+            API Key {hasKey && <span className="success">· {t('đã lưu (mã hoá)')}</span>}
+          </label>
+          <div className="row">
+            <input
+              className="input mono"
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={hasKey ? t('•••••••• (để trống nếu không đổi)') : t('Nhập API key (bỏ trống nếu API không cần key)')}
+            />
+            {hasKey && (
+              <button className="btn btn-ghost btn-sm" onClick={removeKey}>
+                {t('Xoá key')}
+              </button>
+            )}
+          </div>
         </div>
       </div>
       <div className="callout warning">
         <AlertTriangle size={16} />
-        <span>Code sinh viên sẽ được gửi tới máy chủ của nhà cung cấp (đã ẩn họ tên và MSSV). Chỉ dùng cho assignment bạn bật Cloud AI.</span>
+        <span>{t('Code sinh viên sẽ được gửi tới máy chủ API (đã ẩn họ tên và MSSV). Chỉ dùng cho assignment bạn chọn Cloud API.')}</span>
       </div>
       {result && (
         <div className={'callout ' + (result.ok ? 'info' : 'error')}>
@@ -280,13 +274,33 @@ export function CloudConfigForm({ initialProvider = 'gemini' }: { initialProvide
         </div>
       )}
       <div className="row">
-        <button className="btn" onClick={test} disabled={testing || (!apiKey && !isConfigured && provider !== 'compatible')}>
+        <button className="btn" onClick={test} disabled={testing || !url.trim() || !model.trim()}>
           {testing && <span className="spinner" />} {t('Kiểm tra kết nối')}
         </button>
         <button className="btn btn-primary" onClick={save}>
-          Lưu
+          {t('Lưu')}
         </button>
       </div>
+    </div>
+  )
+}
+
+/** Ô tích "Dùng Cloud API": tích vào thì hiện form URL / API key / model (đã cấu hình → mở sẵn). */
+export function CloudApiToggle(): JSX.Element {
+  const t = useT()
+  const configured = useStore((s) => !!s.ai?.cloudConfigured)
+  const [open, setOpen] = useState(configured)
+  useEffect(() => {
+    if (configured) setOpen(true)
+  }, [configured])
+  return (
+    <div className="col gap-12">
+      <label className="check">
+        <input type="checkbox" checked={open} onChange={(e) => setOpen(e.target.checked)} />
+        <b>{t('Dùng Cloud API')}</b>
+        <span className="meta">· {configured ? t('đã cấu hình') : t('nhập URL, API key, model của bất kỳ API chuẩn OpenAI nào')}</span>
+      </label>
+      {open && <CloudConfigForm />}
     </div>
   )
 }

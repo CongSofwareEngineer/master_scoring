@@ -134,8 +134,9 @@
   - Màu chuỗi: biến `--series-1..6` + `--series-other` trong `styles.css` (bảng màu dark đã kiểm tra bằng validator
     dataviz trên nền `#151b23` và `#111827`: phân biệt được với người mù màu, tương phản ≥ 3:1).
   - Tiến trình (`data:progress`): "AI đang phân tích câu hỏi…", "Đang chạy truy vấn: …", "AI đang đọc kết quả…", "Đang vẽ biểu đồ…".
-- **Chọn AI:** dropdown trên khung chat: Local AI hoặc nhà cung cấp Cloud đã cấu hình. Mặc định Local nếu sẵn sàng, không thì
-  Cloud đầu tiên; nhớ ở `localStorage['ms:dataChatBackend']`; lựa chọn Cloud không còn key → tự đổi. Local → main gọi
+- **Chọn AI:** dropdown trên khung chat: Local AI hoặc Cloud API (khi đã cấu hình) — `DataBackendChoice = 'local' | 'cloud'`.
+  Mặc định Local nếu sẵn sàng, không thì Cloud; nhớ ở `localStorage['ms:dataChatBackend']`; lựa chọn không còn dùng được
+  (Cloud chưa cấu hình, giá trị tên nhà cung cấp kiểu cũ) → tự đổi. Local → main gọi
   `ensureLocalStarted()` trước. Chọn Cloud → cảnh báo mô tả cột, dòng mẫu và kết quả truy vấn sẽ gửi ra ngoài (đi qua
   `netFetch`, có trong nhật ký mạng).
 - **Phiên:** `Map<userId, Session>` trong RAM của main; chuyển trang rồi quay lại vẫn còn file và hội thoại. Đăng xuất /

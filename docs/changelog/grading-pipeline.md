@@ -8,3 +8,4 @@
 - 2026-10-07 | Sửa | Ngân sách token chấm AI: dùng `effectiveContext` (Cloud = contextSize thay vì 120K); thêm nhánh assignment báo cáo (.docx) — kiểm tra hình thức, prompt báo cáo, tóm tắt từng đoạn, `estimateAiText` — hỗ trợ chấm báo cáo
 - 2026-10-09 | Sửa | Bước kiểm tra tự động: thêm nhánh Solidity chạy `compileSolidity` (`solc`) rồi `testSolidity` (`forge test`) — chấm tiêu chí compile/test bài smart contract
 - 2026-10-26 | Sửa | Bước giải nén: gọi `loadForGrading(..., { refreshGit: true })` để bài nộp link Git luôn tải code mới nhất lúc chấm — chấm theo code trên repo tại thời điểm chấm
+- 2026-10-26 | Sửa | Bước câu hỏi vấn đáp: đọc cờ / ngưỡng từ assignment thay vì Cài đặt; `backendFor` gọi `cloudBackend(owner)` (Cloud API chung) — câu hỏi theo từng assignment, Cloud 1 URL chung
