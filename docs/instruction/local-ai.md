@@ -18,9 +18,20 @@
 - **llama-server:**
   - Tìm theo thứ tự: runtime đóng gói trong bộ cài → `runtime/llama/<variant>` → (dev macOS)
     `resources/runtime-mac/<arch>` → `PATH` (macOS/Linux). Không có → tự tải từ GitHub `ggml-org/llama.cpp`.
-  - Biến thể: Windows `cpu` / `vulkan` (auto chọn Vulkan nếu có GPU rời NVIDIA/AMD; lỗi Vulkan → tự chuyển CPU);
-    macOS một bản Metal, Apple Silicon đưa toàn bộ layer lên GPU.
-  - Chạy `-m <model> --host 127.0.0.1 --port <cổng trống> -c <context> -np 1 --jinja -t threads -ngl gpuLayers`
+  - Biến thể: Windows `cpu` / `vulkan` (auto chọn Vulkan nếu Electron thấy GPU NVIDIA/AMD và có bản Vulkan; lỗi Vulkan
+    → tự chuyển CPU); macOS một bản Metal, Apple Silicon đưa toàn bộ layer lên GPU.
+  - **Chọn GPU cho bản Vulkan (`vulkanPlan`):** chạy `llama-server --list-devices`, phân loại bằng `isIntegratedGpu()`
+    (Intel UHD/Iris, AMD "Radeon(TM) Graphics" / "Radeon 780M Graphics", Vega… = GPU tích hợp). Chỉ truyền
+    `--device <các GPU rời>` — nếu không, llama.cpp chia layer cho **mọi** GPU theo bộ nhớ trống, mà iGPU báo "VRAM" là
+    RAM máy dùng chung (vd. laptop GTX 1650 Ti 4 GB + AMD iGPU "12 GB" → ~3/4 model nằm trong RAM, GPU rời gần như không
+    dùng). Chỉ có iGPU: chế độ Tự động → chạy CPU; người dùng ép Vulkan → vẫn dùng iGPU. Không đọc được danh sách →
+    không truyền `--device` (như cũ).
+  - **Số layer lên GPU:** `gpuLayers = -1` (tự động) + runtime có `--fit` (kiểm tra qua `--help`) → `-ngl auto --fit on
+    --fit-target 512`: llama.cpp tự đưa lên GPU nhiều layer nhất VRAM chứa được (chừa 512 MiB), **phần dư chạy RAM**
+    (offload từng phần, không còn kiểu tất cả hoặc không có gì). Runtime cũ không có `--fit` → `-ngl = layers + 1` như trước.
+    `gpuLayers ≥ 0` → dùng đúng số đó. `-c` luôn truyền nên `--fit` không tự giảm context.
+  - Nhãn trạng thái: `GPU Vulkan · <tên GPU> (N/M layer)` — N/M đọc từ dòng log `offloaded N/M layers to GPU`.
+  - Chạy `-m <model> --host 127.0.0.1 --port <cổng trống> -c <context> -np 1 --jinja -t threads [--device …] -ngl …`
     (`--jinja` = dùng chat template của model để nhận `tools` / trả `tool_calls` — agent ở `ai-agents.md`); context =
     `effectiveContext('local', contextSize)` = min(contextSize, `MAX_CONTEXT` 200K) — giống Cloud. Lưu ý: model
     Qwen2.5-Coder huấn luyện 32K, chọn lớn hơn tốn nhiều RAM/VRAM (KV cache) và chất lượng đọc phần xa có thể giảm; chờ
@@ -35,8 +46,16 @@
 
 - Chỉ lắng nghe `127.0.0.1`; gọi Local AI không đi qua `netFetch`.
 - Thông tin phần cứng chỉ để hiển thị / ước tính, không chặn cài đặt.
+- Model 7B Q4_K_M (~4.7 GB) + KV cache context 32K (~1.75 GB) không vừa GPU 4 GB → chạy chia GPU + RAM, chậm hơn chạy
+  hết trên GPU; model 1.5B (~2 GB tổng ở 32K) vừa trọn GPU 4 GB.
+- `isIntegratedGpu()` dựa vào tên thiết bị — GPU lạ có thể bị phân loại sai; khi đó ép Vulkan / chỉnh số layer trong
+  AI Models.
 
 ## Test
 
 Thủ công: cài model 1.5B → tạm dừng giữa chừng → tiếp tục → xác minh → sẵn sàng; kill llama-server bằng tay → trạng thái
 Lỗi, hàng đợi tự tạm dừng; xoá model đang dùng.
+
+GPU (Windows, máy có GPU rời + iGPU): `resources/runtime/llama/vulkan/llama-server.exe --list-devices` phải thấy cả hai;
+khởi động model → nhãn hiện `GPU Vulkan · <GPU rời> (N/M layer)`, Task Manager → GPU rời có "Dedicated GPU memory" tăng,
+iGPU không tăng "Shared GPU memory". Model 7B trên GPU 4 GB → N < M (một phần chạy RAM) chứ không rơi hẳn về `CPU`.

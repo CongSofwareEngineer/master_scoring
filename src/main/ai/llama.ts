@@ -25,6 +25,22 @@ let state: LocalState = { kind: 'not_installed' }
 let port = 0
 let stderrTail: string[] = []
 let stopping = false
+// Dòng "offloaded N/M layers to GPU" của lần chạy hiện tại — để hiện đúng số layer llama.cpp thực sự đưa lên GPU
+let offloaded = ''
+
+interface GpuDevice {
+  id: string // tên thiết bị theo llama.cpp, vd. "Vulkan1"
+  name: string
+  totalMb: number
+  freeMb: number
+}
+
+// Cách đưa model lên GPU cho một lần chạy: số layer ('auto' = llama.cpp tự tính cho vừa VRAM, phần còn lại chạy RAM)
+// và danh sách GPU được dùng (rỗng = để llama.cpp tự chọn).
+interface GpuPlan {
+  layers: number | 'auto'
+  devices: GpuDevice[]
+}
 
 export function getLocalState(): LocalState {
   return state
@@ -163,6 +179,51 @@ async function chooseVariant(): Promise<Variant> {
   return 'cpu'
 }
 
+function runExe(exe: string, args: string[]): Promise<string> {
+  return new Promise((resolve) =>
+    execFile(exe, args, { windowsHide: true, timeout: 30_000, maxBuffer: 4 * 1024 * 1024 }, (_err, out, err) => resolve(`${out ?? ''}\n${err ?? ''}`))
+  )
+}
+
+// Danh sách GPU llama-server nhìn thấy (`--list-devices`), vd. "  Vulkan1: NVIDIA GeForce GTX 1650 Ti (4149 MiB, 3558 MiB free)".
+async function listDevices(exe: string): Promise<GpuDevice[]> {
+  const out = await runExe(exe, ['--list-devices'])
+  const list: GpuDevice[] = []
+  for (const line of out.split(/\r?\n/)) {
+    const m = /^\s*([A-Za-z]+\d+):\s*(.+?)\s*\((\d+)\s*MiB,\s*(\d+)\s*MiB free\)/.exec(line)
+    if (m) list.push({ id: m[1], name: m[2], totalMb: Number(m[3]), freeMb: Number(m[4]) })
+  }
+  return list
+}
+
+// GPU tích hợp (iGPU) dùng chung RAM máy: Intel UHD/Iris, AMD "Radeon(TM) Graphics" / "Radeon 780M Graphics" / Vega…
+// Đưa layer lên iGPU = vẫn ăn RAM máy, lại chậm hơn GPU rời → bỏ qua khi máy có GPU rời.
+export function isIntegratedGpu(name: string): boolean {
+  if (/\bRX\b|Radeon\s*Pro|Instinct|GeForce|NVIDIA|Quadro|Tesla|Arc\(TM\)\s*[AB]\d/i.test(name)) return false
+  return /Intel|Radeon.*Graphics|Vega\s*\d*\s*Graphics|llvmpipe|Microsoft Basic|SwiftShader/i.test(name)
+}
+
+// Bản llama-server mới có `--fit` + `-ngl auto`: tự tính số layer vừa VRAM, phần dư để lại RAM (đưa lên GPU từng phần).
+const fitSupport = new Map<string, boolean>()
+async function supportsFit(exe: string): Promise<boolean> {
+  if (!fitSupport.has(exe)) fitSupport.set(exe, /--fit\b/.test(await runExe(exe, ['--help'])))
+  return fitSupport.get(exe)!
+}
+
+// Kế hoạch GPU cho bản Vulkan. null = máy không có GPU rời dùng được → chạy CPU.
+async function vulkanPlan(exe: string, modelId: string): Promise<GpuPlan | null> {
+  const s = getSettings(null)
+  const forced = s.llamaVariant === 'vulkan'
+  const all = await listDevices(exe)
+  const discrete = all.filter((d) => !isIntegratedGpu(d.name))
+  // Đọc được danh sách nhưng chỉ có iGPU: tự động → CPU; người dùng ép Vulkan → vẫn dùng iGPU.
+  if (all.length && !discrete.length && !forced) return null
+  const devices = discrete.length ? discrete : all
+  const fit = await supportsFit(exe)
+  const layers = s.gpuLayers >= 0 ? s.gpuLayers : fit ? 'auto' : modelDef(modelId).layers + 1
+  return { layers, devices }
+}
+
 // Số layer đưa lên GPU cho bản "cpu": Apple Silicon dùng Metal (unified memory) → đưa toàn bộ.
 function cpuVariantGpuLayers(modelId: string): number {
   if (process.platform === 'darwin' && process.arch === 'arm64') {
@@ -170,6 +231,10 @@ function cpuVariantGpuLayers(modelId: string): number {
     return s.gpuLayers >= 0 ? s.gpuLayers : modelDef(modelId).layers + 1
   }
   return 0
+}
+
+async function serverExe(variant: Variant): Promise<string> {
+  return (await findServer(variant)) ?? (await downloadRuntime(variant, (m) => emit('ai:runtime-progress', m)))
 }
 
 function describeExit(code: number | null): string {
@@ -183,8 +248,8 @@ function describeExit(code: number | null): string {
   return `llama-server dừng bất thường (mã ${code}).\n${tail}`
 }
 
-async function launch(modelId: string, variant: Variant, gpuLayers: number): Promise<void> {
-  const exe = (await findServer(variant)) ?? (await downloadRuntime(variant, (m) => emit('ai:runtime-progress', m)))
+async function launch(modelId: string, variant: Variant, plan: GpuPlan): Promise<void> {
+  const exe = await serverExe(variant)
   const s = getSettings(null)
   port = await freePort()
   const args = ['-m', modelPath(modelId), '--host', '127.0.0.1', '--port', String(port), '-c', String(effectiveContext('local', s.contextSize)), '-np', '1']
@@ -192,8 +257,13 @@ async function launch(modelId: string, variant: Variant, gpuLayers: number): Pro
   args.push('--jinja')
   const threads = s.threads > 0 ? s.threads : Math.max(1, Math.min(8, os.cpus().length - 1))
   args.push('-t', String(threads))
-  args.push('-ngl', String(gpuLayers))
+  // Chỉ dùng GPU đã chọn (bỏ iGPU) — mặc định llama.cpp chia layer cho MỌI GPU theo bộ nhớ trống, iGPU báo "VRAM" là RAM máy
+  if (plan.devices.length) args.push('--device', plan.devices.map((d) => d.id).join(','))
+  args.push('-ngl', String(plan.layers))
+  // 'auto': llama.cpp tự tính số layer vừa VRAM (chừa 512 MiB cho driver / màn hình), phần còn lại chạy trên RAM
+  if (plan.layers === 'auto') args.push('--fit', 'on', '--fit-target', '512')
   stderrTail = []
+  offloaded = ''
   stopping = false
   const proc = spawn(exe, args, { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
   child = proc
@@ -202,6 +272,8 @@ async function launch(modelId: string, variant: Variant, gpuLayers: number): Pro
   const onData = (d: Buffer): void => {
     for (const line of d.toString().split(/\r?\n/)) {
       if (!line.trim()) continue
+      const off = /offloaded (\d+)\/(\d+) layers to GPU/i.exec(line)
+      if (off) offloaded = `${off[1]}/${off[2]}`
       stderrTail.push(line)
       if (stderrTail.length > 60) stderrTail.shift()
     }
@@ -235,8 +307,13 @@ async function launch(modelId: string, variant: Variant, gpuLayers: number): Pro
       throw new Error('llama-server khởi động quá lâu (quá 5 phút).')
     }
   }
+  const layerText = offloaded || String(plan.layers)
   const label =
-    variant === 'vulkan' ? `GPU Vulkan (${gpuLayers} layer)` : process.platform === 'darwin' && gpuLayers > 0 ? `Apple Metal (${gpuLayers} layer)` : 'CPU'
+    variant === 'vulkan'
+      ? `GPU Vulkan${plan.devices.length ? ' · ' + plan.devices.map((d) => d.name).join(', ') : ''} (${layerText} layer)`
+      : process.platform === 'darwin' && plan.layers !== 0
+        ? `Apple Metal (${layerText} layer)`
+        : 'CPU'
   setLocalState({ kind: 'ready', modelId, variant: label, port })
 }
 
@@ -252,10 +329,13 @@ export async function startLocal(modelId?: string): Promise<void> {
   const variant = await chooseVariant()
   try {
     if (variant === 'vulkan') {
-      const layers = s.gpuLayers >= 0 ? s.gpuLayers : modelDef(id).layers + 1
       try {
-        await launch(id, 'vulkan', layers)
-        return
+        const plan = await vulkanPlan(await serverExe('vulkan'), id)
+        // Không có GPU rời (chỉ iGPU) → chạy CPU luôn
+        if (plan) {
+          await launch(id, 'vulkan', plan)
+          return
+        }
       } catch (e) {
         if (s.llamaVariant === 'vulkan') throw e
         // GPU không đủ VRAM / lỗi driver → tự chuyển về CPU
@@ -263,7 +343,7 @@ export async function startLocal(modelId?: string): Promise<void> {
         setLocalState({ kind: 'starting', modelId: id })
       }
     }
-    await launch(id, 'cpu', cpuVariantGpuLayers(id))
+    await launch(id, 'cpu', { layers: cpuVariantGpuLayers(id), devices: [] })
   } catch (e: any) {
     setLocalState({ kind: 'error', message: e?.message ?? String(e), modelId: id })
   }

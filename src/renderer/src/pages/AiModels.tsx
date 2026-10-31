@@ -151,7 +151,7 @@ export function AiModelsPage(): JSX.Element {
                 <input className="input" readOnly value="macOS (CPU + Metal)" />
               </Field>
             ) : (
-              <Field label="Bản llama-server" hint="Tự động: có GPU rời → Vulkan (đưa model lên GPU), còn lại CPU">
+              <Field label="Bản llama-server" hint="Tự động: có GPU rời → Vulkan (chỉ dùng GPU rời, bỏ qua GPU tích hợp), còn lại CPU">
                 <select className="select" value={runtime.llamaVariant} onChange={(e) => setRuntime({ ...runtime, llamaVariant: e.target.value as AppSettings['llamaVariant'] })}>
                   <option value="auto">Tự động</option>
                   <option value="cpu">CPU (tự chọn AVX2 / máy đời cũ)</option>
@@ -174,7 +174,7 @@ export function AiModelsPage(): JSX.Element {
             <Field label="Số luồng CPU" hint="0 = tự động">
               <input className="input" type="number" min={0} max={64} value={runtime.threads} onChange={(e) => setRuntime({ ...runtime, threads: Number(e.target.value) })} />
             </Field>
-            <Field label="Số layer đưa lên GPU" hint="-1 = tự động (Vulkan / Metal), 0 = chỉ CPU">
+            <Field label="Số layer đưa lên GPU" hint="-1 = tự động: đưa lên GPU nhiều nhất VRAM chứa được, phần dư chạy RAM; 0 = chỉ CPU">
               <input className="input" type="number" min={-1} max={200} value={runtime.gpuLayers} onChange={(e) => setRuntime({ ...runtime, gpuLayers: Number(e.target.value) })} />
             </Field>
           </div>
