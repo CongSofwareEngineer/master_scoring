@@ -397,7 +397,55 @@ export const EN: Record<string, string> = {
   'Code sinh viên sẽ được gửi tới máy chủ API (đã ẩn họ tên và MSSV). Chỉ dùng cho assignment bạn chọn Cloud API.':
     'Student code will be sent to the API server (names and student IDs hidden). Only used for assignments set to Cloud API.',
   'Cloud API': 'Cloud API',
-  'Cloud API (chưa cấu hình)': 'Cloud API (not configured)'
+  'Cloud API (chưa cấu hình)': 'Cloud API (not configured)',
+  // Chuyển văn bản thành giọng nói (TTS)
+  'Chuyển văn bản thành giọng nói': 'Text to Speech',
+  'Đọc văn bản tiếng Việt bằng model VITS chạy ngay trên máy — không gửi văn bản ra ngoài.':
+    'Reads Vietnamese text aloud with a VITS model running on this computer — the text never leaves the machine.',
+  'Nhập hoặc dán văn bản tiếng Việt cần đọc…': 'Type or paste the Vietnamese text to read…',
+  'ký tự': 'characters',
+  Giọng: 'Voice',
+  Nam: 'Male',
+  Nữ: 'Female',
+  'Trẻ em': 'Child',
+  'Tốc độ': 'Speed',
+  'Tinh chỉnh cao độ': 'Pitch fine-tune',
+  Model: 'Model',
+  'chưa tải': 'not downloaded',
+  'Model này chưa được tải — tải ở danh sách model bên phải trước khi đọc.':
+    'This model is not downloaded yet — download it from the model list on the right first.',
+  'Đọc văn bản': 'Read aloud',
+  'Đang tạo giọng nói…': 'Generating speech…',
+  'Đang đọc đoạn {done}/{total}': 'Reading segment {done}/{total}',
+  'tạo trong {s} s': 'generated in {s} s',
+  'cao độ gốc': 'base pitch',
+  'Lưu file .wav': 'Save .wav file',
+  'Lưu file âm thanh': 'Save audio file',
+  'Đã lưu': 'Saved',
+  'Ký tự model không đọc được (đã bỏ qua)': 'Characters the model cannot read (skipped)',
+  'Model hỗ trợ sẵn': 'Built-in models',
+  'Đã tải': 'Downloaded',
+  'Chưa tải': 'Not downloaded',
+  Repo: 'Repo',
+  '(chưa có)': '(none)',
+  'Bản đang cài tải từ': 'Installed copy downloaded from',
+  'Đang kiểm tra SHA-256…': 'Verifying SHA-256…',
+  'Đang chuẩn bị tải…': 'Preparing download…',
+  'Tải lại': 'Re-download',
+  'Tải tiếp': 'Resume',
+  'Tải': 'Download',
+  'Sửa repo': 'Edit repo',
+  'Xoá model {name}?': 'Delete model {name}?',
+  'Đã xoá model': 'Model deleted',
+  'Đã tải xong model': 'Model downloaded',
+  'Tải model thất bại': 'Model download failed',
+  'Model cần bản ONNX định dạng transformers.js trên Hugging Face (onnx/model.onnx + vocab.json + config.json). Giọng Nam / Nữ / Trẻ em được tạo bằng cách đổi cao độ giọng gốc của model.':
+    'Models need an ONNX export in transformers.js format on Hugging Face (onnx/model.onnx + vocab.json + config.json). Male / Female / Child voices are made by shifting the pitch of the model’s base voice.',
+  'Model MMS-TTS tiếng Việt của Meta, bản ONNX chuyển đổi sẵn (Xenova). Chỉ dùng phi thương mại.':
+    'Meta’s Vietnamese MMS-TTS model, pre-converted to ONNX (Xenova). Non-commercial use only.',
+  'Nhập repo Hugging Face (owner/name) có bản ONNX của model này.': 'Enter a Hugging Face repo (owner/name) that has an ONNX export of this model.',
+  'Repo gốc chưa truy cập công khai được / chưa có bản ONNX — sửa repo nếu có bản ONNX khác.':
+    'The original repo is not publicly accessible / has no ONNX export — edit the repo if another ONNX copy exists.',
 }
 
 export function translate(lang: string, s: string, vars?: Record<string, string | number>): string {

@@ -54,6 +54,11 @@
 
 ## Lưu ý / giới hạn
 
+- **onnxruntime-node (TTS, xem `text-to-speech.md`):** native addon nên `asarUnpack: node_modules/onnxruntime-node/bin/**`;
+  `files` bỏ binary Linux (chung), bộ cài Windows bỏ `darwin/` + `win32/arm64/`, bộ cài macOS bỏ `win32/`. Bản 1.31.1 chỉ có
+  binary macOS **arm64** → bản Mac Intel không chạy được TTS (các chức năng khác bình thường). `npmRebuild: false` vẫn đúng
+  vì là N-API. npm 11 chặn postinstall của gói (chỉ dùng để tải CUDA trên Linux) — không ảnh hưởng.
+
 - `build/cert/` nằm trong `.gitignore` — **phải sao lưu riêng**; mất thì bản build sau dùng chứng chỉ khác, người dùng
   phải tin cậy lại.
 - Chứng chỉ tự ký không qua được SmartScreen như chứng chỉ thương mại: **lần mở đầu** file `.exe` tải từ internet

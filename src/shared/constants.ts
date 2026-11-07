@@ -411,3 +411,42 @@ export function sourceLabel(source: CriterionSource, kind: AssignmentKind = 'cod
 export function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
+
+// ───── Chuyển văn bản thành giọng nói (TTS) — xem docs/instruction/text-to-speech.md ─────
+// Model VITS dạng ONNX (định dạng transformers.js: onnx/model.onnx + vocab.json + config.json).
+// `defaultRepo` rỗng = chưa có bản ONNX công khai, người dùng nhập repo Hugging Face trong trang TTS.
+export const TTS_MODELS = [
+  {
+    id: 'mms-tts-vie',
+    name: 'facebook/mms-tts-vie',
+    defaultRepo: 'Xenova/mms-tts-vie',
+    sizeLabel: '~115 MB',
+    license: 'CC BY-NC 4.0',
+    note: 'Model MMS-TTS tiếng Việt của Meta, bản ONNX chuyển đổi sẵn (Xenova). Chỉ dùng phi thương mại.'
+  },
+  {
+    id: 'vits-vietnamese-v2',
+    name: 'vits-vietnamese-v2',
+    defaultRepo: '',
+    sizeLabel: '',
+    license: '',
+    note: 'Nhập repo Hugging Face (owner/name) có bản ONNX của model này.'
+  },
+  {
+    id: 'pyl5-vits-vietnamese',
+    name: 'pyl5/vits-vietnamese',
+    defaultRepo: 'pyl5/vits-vietnamese',
+    sizeLabel: '',
+    license: '',
+    note: 'Repo gốc chưa truy cập công khai được / chưa có bản ONNX — sửa repo nếu có bản ONNX khác.'
+  }
+] as const
+
+// Giọng = đổi cao độ giọng gốc của model tới cao độ mục tiêu (Hz), giới hạn hệ số trong [min, max].
+export const TTS_VOICES = {
+  male: { label: 'Nam', targetF0: 125, min: 0.6, max: 1.05, speed: 1.0 },
+  female: { label: 'Nữ', targetF0: 215, min: 0.9, max: 1.5, speed: 1.0 },
+  child: { label: 'Trẻ em', targetF0: 290, min: 1.2, max: 2.0, speed: 1.06 }
+} as const
+
+export const TTS_MAX_CHARS = 5000

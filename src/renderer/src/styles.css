@@ -2018,3 +2018,46 @@ pre.output {
   margin-bottom: 3px;
   overflow-wrap: anywhere;
 }
+
+/* ───────────── Chuyển văn bản thành giọng nói (TTS) ───────────── */
+.tts-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .tts-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.tts-grid .choice-card {
+  cursor: pointer;
+  padding: 12px;
+}
+.tts-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+.tts-options input[type='range'] {
+  width: 100%;
+  accent-color: var(--primary);
+}
+.tts-voice button {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+.tts-player {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.tts-player audio {
+  width: 100%;
+}

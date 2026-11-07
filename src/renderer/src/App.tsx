@@ -20,6 +20,7 @@ import { AiModelsPage } from './pages/AiModels'
 import { SettingsPage } from './pages/Settings'
 import { HelpPage } from './pages/Help'
 import { DataChatPage } from './pages/DataChat'
+import { TextToSpeechPage } from './pages/TextToSpeech'
 
 type Phase = 'loading' | 'auth' | 'setup' | 'main'
 
@@ -227,6 +228,7 @@ function Main(): JSX.Element {
           {page === 'settings' && <SettingsPage />}
           {page === 'help' && <HelpPage />}
           {page === 'datachat' && <DataChatPage />}
+          {page === 'tts' && <TextToSpeechPage />}
         </main>
       </div>
     </div>

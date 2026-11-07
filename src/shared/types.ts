@@ -568,3 +568,48 @@ export interface DataPreview {
 }
 
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string }
+
+// ───── Chuyển văn bản thành giọng nói (TTS) ─────
+export type TtsVoice = 'male' | 'female' | 'child'
+
+export interface TtsModelInfo {
+  id: string
+  name: string
+  repo: string // repo Hugging Face đang dùng (mặc định hoặc người dùng sửa)
+  defaultRepo: string
+  sizeLabel: string
+  license: string
+  note: string
+  installed: boolean
+  installedRepo: string | null // repo đã tải bản đang cài
+  bytes: number // dung lượng file .onnx đã cài
+  partial: number // số byte đã tải dở
+}
+
+export interface TtsDownloadEvent {
+  modelId: string
+  phase: 'downloading' | 'verifying' | 'done' | 'paused' | 'error'
+  received: number
+  total: number
+  percent: number
+  message?: string
+}
+
+export interface TtsRequest {
+  text: string
+  modelId: string
+  voice: TtsVoice
+  speed: number // 0.5–2 (nhân thêm vào tốc độ của giọng)
+  pitch: number // tinh chỉnh cao độ theo nửa cung, -6..+6
+}
+
+export interface TtsResult {
+  wav: Uint8Array
+  sampleRate: number
+  durationSec: number
+  elapsedMs: number
+  segments: number
+  baseF0: number | null // cao độ giọng gốc đo được (Hz)
+  pitchFactor: number
+  skipped: string[] // ký tự model không đọc được (đã bỏ)
+}

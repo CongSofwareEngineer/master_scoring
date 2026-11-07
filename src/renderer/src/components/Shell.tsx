@@ -15,6 +15,7 @@ import {
   LogOut,
   Settings,
   ShieldAlert,
+  AudioLines,
   Sheet,
   Users
 } from 'lucide-react'
@@ -34,6 +35,7 @@ const NAV: { page: Page; label: string; icon: typeof LayoutDashboard; group: num
   { page: 'integrity', label: 'Liêm chính', icon: ShieldAlert, group: 0 },
   { page: 'reports', label: 'Báo cáo', icon: FileChartColumn, group: 0 },
   { page: 'datachat', label: 'Phân tích dữ liệu', icon: Sheet, group: 2 },
+  { page: 'tts', label: 'Chuyển văn bản thành giọng nói', icon: AudioLines, group: 2 },
   { page: 'profiles', label: 'Tech Profiles', icon: Layers, group: 1 },
   { page: 'models', label: 'AI Models', icon: Bot, group: 1 }
 ]

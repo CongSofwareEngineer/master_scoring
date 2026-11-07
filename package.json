@@ -1,7 +1,7 @@
 {
   "name": "master-scoring",
   "productName": "Master Scoring",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Master Scoring - ứng dụng chấm điểm code sinh viên (Local AI / Cloud AI)",
   "author": "Master Scoring",
   "license": "UNLICENSED",
@@ -48,6 +48,7 @@
     "exceljs": "4.4.0",
     "iconv-lite": "0.7.3",
     "lucide-react": "1.52.0",
+    "onnxruntime-node": "1.31.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "sql.js": "1.14.2",

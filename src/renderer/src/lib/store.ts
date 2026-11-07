@@ -15,6 +15,7 @@ export type Page =
   | 'settings'
   | 'help'
   | 'datachat'
+  | 'tts'
 
 export interface PageParams {
   studentId?: number

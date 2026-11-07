@@ -12,9 +12,13 @@ files:
   - '!scripts/**'
   - '!resources/**'
   - '!release/**'
+  # onnxruntime-node: bỏ bản Linux (app chỉ build Windows / macOS)
+  - '!node_modules/onnxruntime-node/bin/napi-v6/linux/**'
 asar: true
 asarUnpack:
   - node_modules/sql.js/dist/sql-wasm.wasm
+  # onnxruntime-node (TTS): file .node / .dll / .dylib phải nằm ngoài asar để nạp được
+  - node_modules/onnxruntime-node/bin/**
 npmRebuild: false
 
 # ───────────── Windows 10/11 x64: bộ cài NSIS (.exe) ─────────────
@@ -25,6 +29,10 @@ win:
         - x64
   icon: build/icon.ico
   executableName: MasterScoring
+  # Bộ cài Windows x64: bỏ binary onnxruntime của macOS / Windows ARM
+  files:
+    - '!node_modules/onnxruntime-node/bin/napi-v6/darwin/**'
+    - '!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**'
   requestedExecutionLevel: asInvoker
   # llama-server.exe (CPU + Vulkan) — tải bằng `npm run fetch:runtime`
   extraResources:
@@ -62,6 +70,9 @@ mac:
         - x64
   icon: build/icon.png
   category: public.app-category.education
+  # Bỏ binary onnxruntime của Windows (onnxruntime-node chỉ có bản macOS arm64 — Mac Intel không chạy được TTS)
+  files:
+    - '!node_modules/onnxruntime-node/bin/napi-v6/win32/**'
   darkModeSupport: true
   hardenedRuntime: false
   gatekeeperAssess: false

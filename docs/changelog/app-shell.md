@@ -9,3 +9,4 @@
 - 2026-10-06 | Thêm mới | Hiển thị version trên top bar: inject `__APP_VERSION__` từ package.json qua electron.vite.config.ts — biết đang chạy bản build nào
 - 2026-10-06 | Thêm mới | Cửa sổ app & khung giao diện: tạo tài liệu instruction mô tả hiện trạng — áp dụng quy tắc docs trong CLAUDE.md
 - 2026-10-16 | Sửa | Điều hướng trang: thêm nhóm sidebar "công cụ riêng" với mục Phân tích dữ liệu (`datachat`), ẩn banner mật khẩu mặc định ở trang này — chức năng chat với Excel / CSV không gắn assignment
+- 2026-11-07 | Thêm mới | Điều hướng trang: thêm mục sidebar "Chuyển văn bản thành giọng nói" (`tts`, nhóm công cụ riêng); CSP renderer thêm `media-src 'self' blob:` để phát âm thanh — tính năng TTS (xem text-to-speech.md)

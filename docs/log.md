@@ -59,3 +59,4 @@ Quy tắc: xem [../CLAUDE.md](../CLAUDE.md).
 | Logic | Instruction | Changelog |
 | --- | --- | --- |
 | Trợ lý dữ liệu — chat với file Excel / CSV (Kế toán AI) | [instruction/data-chat.md](instruction/data-chat.md) | [changelog/data-chat.md](changelog/data-chat.md) |
+| Chuyển văn bản thành giọng nói (TTS tiếng Việt, VITS ONNX) | [instruction/text-to-speech.md](instruction/text-to-speech.md) | [changelog/text-to-speech.md](changelog/text-to-speech.md) |

@@ -1,11 +1,12 @@
 // Đăng ký toàn bộ IPC handler. Mọi handler trả về { ok, data } | { ok: false, error } để UI hiển thị lỗi rõ ràng.
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { existsSync } from 'fs'
+import { writeFile } from 'fs/promises'
 import { evaluatePenalty, normalizePolicy } from '@shared/aiPolicy'
 import { round2 } from '@shared/constants'
 import { translate } from '@shared/i18n'
 import { REPORT_EXTS, SUPPORTED_EXTS } from '@shared/submissionName'
-import type { Assignment, Criterion, DataBackendChoice, Lang, TechProfile } from '@shared/types'
+import type { Assignment, Criterion, DataBackendChoice, Lang, TechProfile, TtsRequest } from '@shared/types'
 import { cloudBackend, cloudHasKey, getCloudConfig, localBackend, saveCloudConfig, testConnection } from './ai/client'
 import { aiStatus, ensureLocalStarted, installAndUse, pauseModelDownload, restartLocal, switchModel } from './ai/manager'
 import { getLocalState, stopLocal } from './ai/llama'
@@ -49,6 +50,8 @@ import {
 import { defaultReportName, exportCsv, exportExcel, exportPdf, reportColumns } from './reports/reports'
 import { invalidateReview, listFiles, readFile, readRawFile, searchProject } from './review'
 import { getSettings, updateSettings } from './settings'
+import { cancelTts, synthesize, unloadTts } from './tts/engine'
+import { currentTtsDownload, deleteTtsModel, downloadTtsModel, listTtsModels, pauseTtsDownload, setTtsRepo } from './tts/models'
 
 type Handler = (...args: any[]) => any
 
@@ -76,6 +79,9 @@ function ownStudent(studentId: number): number {
   if (assignmentOwner(aid) !== requireUser().id) throw new Error('Không có quyền truy cập')
   return aid
 }
+
+// Âm thanh TTS gần nhất của từng user (để Lưu file .wav không phải gửi lại từ renderer)
+const lastTts = new Map<number, Uint8Array>()
 
 export function registerIpc(): void {
   // ───── Ứng dụng ─────
@@ -481,6 +487,58 @@ export function registerIpc(): void {
     return askData(u.id, question, backend, lang, (msg) => emit('data:progress', { userId: u.id, msg }))
   })
   handle('data:cancel', () => cancelAsk(requireUser().id))
+
+  // ───── Chuyển văn bản thành giọng nói (TTS) ─────
+  handle('tts:models', () => {
+    requireUser()
+    return { models: listTtsModels(), downloading: currentTtsDownload()?.modelId ?? null }
+  })
+  handle('tts:setRepo', async (modelId: string, repo: string) => {
+    requireUser()
+    await setTtsRepo(String(modelId), String(repo ?? ''))
+    return listTtsModels()
+  })
+  handle('tts:download', async (modelId: string) => {
+    requireUser()
+    if (currentTtsDownload()) throw new Error('Đang tải một model TTS khác')
+    await unloadTts(String(modelId))
+    // Chạy nền, tiến trình / kết quả báo qua sự kiện tts:download
+    void downloadTtsModel(String(modelId), (e) => emit('tts:download', e)).catch(() => {})
+    return true
+  })
+  handle('tts:pause', () => {
+    requireUser()
+    pauseTtsDownload()
+  })
+  handle('tts:delete', async (modelId: string) => {
+    requireUser()
+    if (currentTtsDownload()?.modelId === modelId) throw new Error('Model đang được tải')
+    await unloadTts(String(modelId))
+    await deleteTtsModel(String(modelId))
+    return listTtsModels()
+  })
+  handle('tts:synthesize', async (req: TtsRequest) => {
+    const u = requireUser()
+    const r = await synthesize(u.id, req, (done, total) => emit('tts:progress', { userId: u.id, done, total }))
+    lastTts.set(u.id, r.wav)
+    return r
+  })
+  handle('tts:cancel', () => cancelTts(requireUser().id))
+  handle('tts:save', async () => {
+    const u = requireUser()
+    const wav = lastTts.get(u.id)
+    if (!wav) throw new Error('Chưa có âm thanh để lưu')
+    const d = new Date()
+    const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}_${String(d.getHours()).padStart(2, '0')}${String(d.getMinutes()).padStart(2, '0')}`
+    const r = await dialog.showSaveDialog(win()!, {
+      title: translate(getSettings(u.id).lang, 'Lưu file âm thanh'),
+      defaultPath: `giong-noi_${stamp}.wav`,
+      filters: [{ name: 'WAV', extensions: ['wav'] }]
+    })
+    if (r.canceled || !r.filePath) return null
+    await writeFile(r.filePath, wav)
+    return r.filePath
+  })
 
   handle('system:netlog', () => listNetLog())
   handle('system:clearNetlog', () => clearNetLog())

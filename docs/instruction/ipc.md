@@ -14,10 +14,11 @@
 - Sự kiện main → renderer: `emit(channel, payload)` (`events.ts`) gửi `evt:<channel>` tới mọi cửa sổ; renderer
   nghe bằng `on(channel, cb)`. Các kênh chính: `ai:local`, `ai:cloud-changed`, `ai:runtime-progress`, `queue:state`,
   `students:changed`, `scan:progress`, `integrity:status`, `mingw:progress`, `data:progress` (bước Trợ lý dữ liệu, kèm
-  `userId`).
+  `userId`), `tts:download` (tiến trình tải model TTS), `tts:progress` (đoạn đang đọc, kèm `userId`).
 - Tên kênh theo nhóm: `app:*`, `auth:*`, `settings:*`, `ai:*`, `assign:*`, `students:*`, `result:*`, `review:*`,
   `queue:*`, `integrity:*`, `dashboard:*`, `profiles:*`, `rubric:*`, `mingw:*`, `reports:*`, `data:*` (Trợ lý dữ liệu —
-  dữ liệu theo user đang đăng nhập, xem `data-chat.md`), `system:*`.
+  dữ liệu theo user đang đăng nhập, xem `data-chat.md`), `tts:*` (chuyển văn bản thành giọng nói — models, setRepo,
+  download, pause, delete, synthesize, cancel, save; xem `text-to-speech.md`), `system:*`.
 - **Phân quyền:** `requireUser()` bắt buộc đăng nhập; `ownAssignment(id)` / `ownStudent(studentId)` kiểm tra
   assignment thuộc giáo viên đang đăng nhập (mỗi giáo viên chỉ thấy dữ liệu của mình).
 - Hộp thoại chọn file/folder (`dialog.showOpenDialog`) luôn mở từ main, renderer chỉ nhận đường dẫn kết quả.
