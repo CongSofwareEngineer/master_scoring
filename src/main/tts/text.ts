@@ -99,6 +99,15 @@ export function normalizeVietnamese(input: string): string {
 export interface TextSegment {
   text: string
   pauseAfter: number // giây lặng sau đoạn
+  punct: string // dấu câu kết đoạn cho model Piper: . ! ? , ; : hoặc '' (đoạn bị cắt giữa câu)
+}
+
+/** Dấu câu kết đoạn (Piper có ký hiệu cho . , ! ? ; :) — xuống dòng / … coi như dấu chấm, ngoặc / gạch như dấu phẩy. */
+function clausePunct(p: string): string {
+  const c = /[.!?;:,]/.exec(p)?.[0]
+  if (c) return c
+  if (/[\n…]/.test(p)) return '.'
+  return p ? ',' : ''
 }
 
 const MAX_SEGMENT = 280
@@ -113,18 +122,22 @@ export function splitSegments(text: string): TextSegment[] {
     const punct = m[2]
     const pause = /[\n]/.test(punct) ? 0.5 : /[.!?…;:]/.test(punct) ? 0.35 : punct ? 0.15 : 0.1
     if (!body) {
-      if (out.length) out[out.length - 1].pauseAfter = Math.max(out[out.length - 1].pauseAfter, pause)
+      if (out.length) {
+        const last = out[out.length - 1]
+        last.pauseAfter = Math.max(last.pauseAfter, pause)
+        last.punct ||= clausePunct(punct)
+      }
       continue
     }
     const words = body.split(' ')
     let cur = ''
     for (const w of words) {
       if (cur && cur.length + 1 + w.length > MAX_SEGMENT) {
-        out.push({ text: cur, pauseAfter: 0.08 })
+        out.push({ text: cur, pauseAfter: 0.08, punct: '' })
         cur = w
       } else cur = cur ? cur + ' ' + w : w
     }
-    if (cur) out.push({ text: cur, pauseAfter: pause })
+    if (cur) out.push({ text: cur, pauseAfter: pause, punct: clausePunct(punct) })
   }
   return out
 }

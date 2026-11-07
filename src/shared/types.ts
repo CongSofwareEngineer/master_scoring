@@ -572,16 +572,39 @@ export type ApiResult<T> = { ok: true; data: T } | { ok: false; error: string }
 // ───── Chuyển văn bản thành giọng nói (TTS) ─────
 export type TtsVoice = 'male' | 'female' | 'child'
 
+// vits = VITS định dạng transformers.js (vocab.json, đọc thẳng chữ cái); piper = Piper (.onnx + .onnx.json, đọc phiên âm IPA)
+export type TtsFormat = 'vits' | 'piper'
+
+export interface TtsSpeaker {
+  id: number // speaker id (sid) trong model
+  name: string
+  gender?: 'male' | 'female'
+}
+
+/** Model TTS dựng sẵn trong app (TTS_MODELS). */
+export interface TtsModelPreset {
+  id: string
+  name: string
+  defaultRepo: string // owner/name trên Hugging Face
+  defaultFile?: string // đường dẫn file .onnx trong repo (repo chứa nhiều giọng); trống = tự dò
+  sizeLabel: string
+  license: string
+  note: string
+  speakers?: TtsSpeaker[] // tên / giới tính người đọc (model nhiều giọng) — chỉ áp dụng khi tải từ repo mặc định
+}
+
 export interface TtsModelInfo {
   id: string
   name: string
-  repo: string // repo Hugging Face đang dùng (mặc định hoặc người dùng sửa)
+  repo: string // nguồn đang dùng: owner/name[/đường-dẫn.onnx] (mặc định hoặc người dùng sửa)
   defaultRepo: string
   sizeLabel: string
   license: string
   note: string
   installed: boolean
-  installedRepo: string | null // repo đã tải bản đang cài
+  installedRepo: string | null // nguồn đã tải bản đang cài
+  format: TtsFormat | null // định dạng bản đang cài
+  speakers: TtsSpeaker[] // người đọc của bản đang cài (> 1 = model nhiều giọng)
   bytes: number // dung lượng file .onnx đã cài
   partial: number // số byte đã tải dở
 }
@@ -601,6 +624,7 @@ export interface TtsRequest {
   voice: TtsVoice
   speed: number // 0.5–2 (nhân thêm vào tốc độ của giọng)
   pitch: number // tinh chỉnh cao độ theo nửa cung, -6..+6
+  speaker?: number // người đọc (model nhiều giọng); bỏ trống / < 0 = tự chọn theo giọng Nam / Nữ
 }
 
 export interface TtsResult {
@@ -611,5 +635,6 @@ export interface TtsResult {
   segments: number
   baseF0: number | null // cao độ giọng gốc đo được (Hz)
   pitchFactor: number
-  skipped: string[] // ký tự model không đọc được (đã bỏ)
+  skipped: string[] // ký tự / từ model không đọc được (đã bỏ)
+  speaker: string | null // người đọc đã dùng (model nhiều giọng)
 }

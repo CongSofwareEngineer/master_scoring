@@ -1,4 +1,4 @@
-import type { AiConfidence, AiPolicy, AppSettings, AssignmentKind, Criterion, CriterionSource, GradeStatus, ReportCheck, TechProfile } from './types'
+import type { AiConfidence, AiPolicy, AppSettings, AssignmentKind, Criterion, CriterionSource, GradeStatus, ReportCheck, TechProfile, TtsModelPreset } from './types'
 
 export const APP_NAME = 'Master Scoring'
 
@@ -415,7 +415,7 @@ export function round2(n: number): number {
 // ───── Chuyển văn bản thành giọng nói (TTS) — xem docs/instruction/text-to-speech.md ─────
 // Model VITS dạng ONNX (định dạng transformers.js: onnx/model.onnx + vocab.json + config.json).
 // `defaultRepo` rỗng = chưa có bản ONNX công khai, người dùng nhập repo Hugging Face trong trang TTS.
-export const TTS_MODELS = [
+export const TTS_MODELS: readonly TtsModelPreset[] = [
   {
     id: 'mms-tts-vie',
     name: 'facebook/mms-tts-vie',
@@ -425,22 +425,32 @@ export const TTS_MODELS = [
     note: 'Model MMS-TTS tiếng Việt của Meta, bản ONNX chuyển đổi sẵn (Xenova). Chỉ dùng phi thương mại.'
   },
   {
-    id: 'vits-vietnamese-v2',
-    name: 'vits-vietnamese-v2',
-    defaultRepo: '',
-    sizeLabel: '',
-    license: '',
-    note: 'Nhập repo Hugging Face (owner/name) có bản ONNX của model này.'
+    id: 'piper-vi-vais1000',
+    name: 'Piper vi_VN · vais1000',
+    defaultRepo: 'rhasspy/piper-voices',
+    defaultFile: 'vi/vi_VN/vais1000/medium/vi_VN-vais1000-medium.onnx',
+    sizeLabel: '~63 MB',
+    license: 'MIT · dữ liệu CC BY 4.0',
+    note: 'Giọng Piper chính thức (VITS, 22 kHz), 1 giọng nữ miền Bắc, đọc theo phiên âm.',
+    speakers: [{ id: 0, name: 'vais1000', gender: 'female' }]
   },
   {
-    id: 'pyl5-vits-vietnamese',
-    name: 'pyl5/vits-vietnamese',
-    defaultRepo: 'pyl5/vits-vietnamese',
-    sizeLabel: '',
-    license: '',
-    note: 'Repo gốc chưa truy cập công khai được / chưa có bản ONNX — sửa repo nếu có bản ONNX khác.'
+    id: 'piper-vi-5-speakers',
+    name: 'Piper vi_VN · 5 giọng (CakeByVPBank)',
+    defaultRepo: 'CakeByVPBank/piper-pgl-v4-vi_VN-version39_epoch39',
+    defaultFile: 'vi_VN-csa-voice-piper-v3-medium.onnx',
+    sizeLabel: '~77 MB',
+    license: 'MIT',
+    note: 'Model Piper nhiều giọng (VITS, 22 kHz): 4 giọng nữ, 1 giọng nam, có giọng miền Nam.',
+    speakers: [
+      { id: 0, name: 'Ngọc Lan · nữ miền Bắc', gender: 'female' },
+      { id: 1, name: 'Minh Anh · nữ miền Bắc', gender: 'female' },
+      { id: 2, name: 'Quang Huy · nam miền Bắc', gender: 'male' },
+      { id: 3, name: 'Thu Hà · nữ miền Bắc', gender: 'female' },
+      { id: 4, name: 'Yến Nhi · nữ miền Nam', gender: 'female' }
+    ]
   }
-] as const
+]
 
 // Giọng = đổi cao độ giọng gốc của model tới cao độ mục tiêu (Hz), giới hạn hệ số trong [min, max].
 export const TTS_VOICES = {

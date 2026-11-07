@@ -400,8 +400,8 @@ export const EN: Record<string, string> = {
   'Cloud API (chưa cấu hình)': 'Cloud API (not configured)',
   // Chuyển văn bản thành giọng nói (TTS)
   'Chuyển văn bản thành giọng nói': 'Text to Speech',
-  'Đọc văn bản tiếng Việt bằng model VITS chạy ngay trên máy — không gửi văn bản ra ngoài.':
-    'Reads Vietnamese text aloud with a VITS model running on this computer — the text never leaves the machine.',
+  'Đọc văn bản tiếng Việt bằng model VITS / Piper chạy ngay trên máy — không gửi văn bản ra ngoài.':
+    'Reads Vietnamese text aloud with a VITS / Piper model running on this computer — the text never leaves the machine.',
   'Nhập hoặc dán văn bản tiếng Việt cần đọc…': 'Type or paste the Vietnamese text to read…',
   'ký tự': 'characters',
   Giọng: 'Voice',
@@ -422,7 +422,7 @@ export const EN: Record<string, string> = {
   'Lưu file .wav': 'Save .wav file',
   'Lưu file âm thanh': 'Save audio file',
   'Đã lưu': 'Saved',
-  'Ký tự model không đọc được (đã bỏ qua)': 'Characters the model cannot read (skipped)',
+  'Ký tự / từ model không đọc được (đã bỏ qua)': 'Characters / words the model cannot read (skipped)',
   'Model hỗ trợ sẵn': 'Built-in models',
   'Đã tải': 'Downloaded',
   'Chưa tải': 'Not downloaded',
@@ -439,13 +439,21 @@ export const EN: Record<string, string> = {
   'Đã xoá model': 'Model deleted',
   'Đã tải xong model': 'Model downloaded',
   'Tải model thất bại': 'Model download failed',
-  'Model cần bản ONNX định dạng transformers.js trên Hugging Face (onnx/model.onnx + vocab.json + config.json). Giọng Nam / Nữ / Trẻ em được tạo bằng cách đổi cao độ giọng gốc của model.':
-    'Models need an ONNX export in transformers.js format on Hugging Face (onnx/model.onnx + vocab.json + config.json). Male / Female / Child voices are made by shifting the pitch of the model’s base voice.',
+  'Sửa repo nhận owner/ten-model hoặc owner/ten-model/duong-dan/file.onnx. Hỗ trợ 2 định dạng ONNX: VITS transformers.js (onnx/model.onnx + vocab.json + config.json) và Piper tiếng Việt (<tên>.onnx + <tên>.onnx.json). Repo chỉ có .safetensors / .pth không chạy được. Giọng Nam / Nữ / Trẻ em: model nhiều giọng chọn người đọc nam / nữ, sau đó đổi cao độ tới mức của giọng.':
+    'Edit repo accepts owner/model-name or owner/model-name/path/to/file.onnx. Two ONNX formats are supported: VITS in transformers.js format (onnx/model.onnx + vocab.json + config.json) and Vietnamese Piper voices (<name>.onnx + <name>.onnx.json). Repos with only .safetensors / .pth files cannot run. Male / Female / Child: multi-speaker models pick a male / female speaker, then the pitch is shifted to the voice’s level.',
   'Model MMS-TTS tiếng Việt của Meta, bản ONNX chuyển đổi sẵn (Xenova). Chỉ dùng phi thương mại.':
     'Meta’s Vietnamese MMS-TTS model, pre-converted to ONNX (Xenova). Non-commercial use only.',
-  'Nhập repo Hugging Face (owner/name) có bản ONNX của model này.': 'Enter a Hugging Face repo (owner/name) that has an ONNX export of this model.',
-  'Repo gốc chưa truy cập công khai được / chưa có bản ONNX — sửa repo nếu có bản ONNX khác.':
-    'The original repo is not publicly accessible / has no ONNX export — edit the repo if another ONNX copy exists.',
+  'Giọng Piper chính thức (VITS, 22 kHz), 1 giọng nữ miền Bắc, đọc theo phiên âm.':
+    'Official Piper voice (VITS, 22 kHz), one Northern female speaker, reads from phonemes.',
+  'Model Piper nhiều giọng (VITS, 22 kHz): 4 giọng nữ, 1 giọng nam, có giọng miền Nam.':
+    'Multi-speaker Piper model (VITS, 22 kHz): 4 female and 1 male speaker, including a Southern accent.',
+  'Người đọc': 'Speaker',
+  'Tự chọn theo giọng Nam / Nữ': 'Auto (by Male / Female voice)',
+  'Ngọc Lan · nữ miền Bắc': 'Ngọc Lan · Northern female',
+  'Minh Anh · nữ miền Bắc': 'Minh Anh · Northern female',
+  'Quang Huy · nam miền Bắc': 'Quang Huy · Northern male',
+  'Thu Hà · nữ miền Bắc': 'Thu Hà · Northern female',
+  'Yến Nhi · nữ miền Nam': 'Yến Nhi · Southern female'
 }
 
 export function translate(lang: string, s: string, vars?: Record<string, string | number>): string {

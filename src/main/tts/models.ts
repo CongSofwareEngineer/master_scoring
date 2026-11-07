@@ -1,25 +1,26 @@
-// Model TTS (VITS ONNX, định dạng transformers.js) — tải từ Hugging Face, sửa repo, xoá.
-// Thư mục: <modelsDir>/tts/<id>/ gồm model.onnx, vocab.json, config.json, tokenizer_config.json, source.json.
+// Model TTS — tải từ Hugging Face, sửa nguồn, xoá. Hai định dạng (tự nhận khi tải):
+//  - vits  (transformers.js): model.onnx + vocab.json + config.json [+ tokenizer_config.json] — đọc thẳng chữ cái.
+//  - piper: model.onnx + piper.json (= file <tên>.onnx.json của repo) — đọc phiên âm IPA (bảng vi-ipa.json).
+// Thư mục: <modelsDir>/tts/<id>/ ; có source.json + model.onnx = đã cài.
 import { createWriteStream, existsSync, readFileSync, statSync } from 'fs'
 import { mkdir, rename, rm, unlink, writeFile } from 'fs/promises'
 import { join } from 'path'
 import { TTS_MODELS } from '@shared/constants'
-import type { TtsDownloadEvent, TtsModelInfo } from '@shared/types'
+import type { TtsDownloadEvent, TtsFormat, TtsModelInfo, TtsModelPreset, TtsSpeaker } from '@shared/types'
 import { sha256File } from '../ai/models'
 import { diskFreeBytes } from '../hardware'
 import { netFetch } from '../netlog'
 import { getSettings } from '../settings'
 
-export type TtsModelDef = (typeof TTS_MODELS)[number]
-
 export interface TtsSource {
-  repo: string
+  repo: string // nguồn đã tải: owner/name[/đường-dẫn.onnx]
   file: string // đường dẫn file .onnx trong repo
   sha256: string
   size: number
+  format?: TtsFormat // thiếu (bản cài cũ) = vits
 }
 
-export function ttsModelDef(id: string): TtsModelDef {
+export function ttsModelDef(id: string): TtsModelPreset {
   const m = TTS_MODELS.find((x) => x.id === id)
   if (!m) throw new Error('Model TTS không tồn tại: ' + id)
   return m
@@ -33,7 +34,28 @@ export function ttsModelDir(id: string): string {
   return join(ttsRoot(), ttsModelDef(id).id)
 }
 
-const REPO_RE = /^[A-Za-z0-9][\w.-]*\/[\w.-]+$/
+// owner/name hoặc owner/name/đường/dẫn/file.onnx
+const SPEC_RE = /^[A-Za-z0-9][\w.-]*\/[\w.-]+(\/[^\s?#]+\.onnx)?$/
+
+function defaultSpec(m: TtsModelPreset): string {
+  return m.defaultRepo && m.defaultFile ? `${m.defaultRepo}/${m.defaultFile}` : m.defaultRepo
+}
+
+/** Tách nguồn thành repo + file .onnx (nếu có). */
+function parseSpec(spec: string): { repo: string; file: string | null } {
+  const parts = spec.split('/')
+  return { repo: parts.slice(0, 2).join('/'), file: parts.length > 2 ? parts.slice(2).join('/') : null }
+}
+
+/** Chuẩn hoá nguồn người dùng nhập: owner/name[/file.onnx] hoặc URL huggingface.co/owner/name[/blob|resolve/main/file.onnx]. */
+function normalizeSpec(input: string): string {
+  return input
+    .trim()
+    .replace(/^https?:\/\/huggingface\.co\//i, '')
+    .replace(/[?#].*$/, '')
+    .replace(/\/+$/, '')
+    .replace(/^([^/]+\/[^/]+)\/(?:blob|resolve|tree)\/[^/]+(?=\/|$)/, '$1')
+}
 
 function repoOverrides(): Record<string, string> {
   try {
@@ -44,15 +66,17 @@ function repoOverrides(): Record<string, string> {
 }
 
 export function ttsRepo(id: string): string {
-  return repoOverrides()[id] ?? ttsModelDef(id).defaultRepo
+  return repoOverrides()[id] ?? defaultSpec(ttsModelDef(id))
 }
 
 export async function setTtsRepo(id: string, repo: string): Promise<void> {
-  ttsModelDef(id)
-  const r = repo.trim().replace(/^https?:\/\/huggingface\.co\//i, '').replace(/\/+$/, '')
-  if (r && !REPO_RE.test(r)) throw new Error('Repo không hợp lệ — nhập dạng owner/ten-model (vd. Xenova/mms-tts-vie)')
+  const def = ttsModelDef(id)
+  const r = normalizeSpec(repo)
+  if (r && !SPEC_RE.test(r)) {
+    throw new Error('Nguồn không hợp lệ — nhập dạng owner/ten-model hoặc owner/ten-model/duong-dan/file.onnx (vd. Xenova/mms-tts-vie)')
+  }
   const all = repoOverrides()
-  if (!r || r === ttsModelDef(id).defaultRepo) delete all[id]
+  if (!r || r === defaultSpec(def)) delete all[id]
   else all[id] = r
   await mkdir(ttsRoot(), { recursive: true })
   await writeFile(join(ttsRoot(), 'repos.json'), JSON.stringify(all, null, 2))
@@ -68,6 +92,27 @@ export function installedSource(id: string): TtsSource | null {
   }
 }
 
+/** Người đọc của bản đang cài (chỉ Piper). Tên / giới tính lấy từ TTS_MODELS khi tải từ nguồn mặc định. */
+export function ttsSpeakers(id: string): TtsSpeaker[] {
+  const src = installedSource(id)
+  if (!src || src.format !== 'piper') return []
+  let cfg: any
+  try {
+    cfg = JSON.parse(readFileSync(join(ttsModelDir(id), 'piper.json'), 'utf8'))
+  } catch {
+    return []
+  }
+  const n = Math.max(1, Number(cfg.num_speakers) || 1)
+  const def = ttsModelDef(id)
+  if (src.repo === defaultSpec(def) && def.speakers?.length) return def.speakers.filter((s) => s.id < n)
+  const named = Object.entries((cfg.speaker_id_map ?? {}) as Record<string, number>)
+    .filter(([, v]) => Number.isInteger(v) && v < n)
+    .map(([name, v]) => ({ id: v, name }))
+    .sort((a, b) => a.id - b.id)
+  if (named.length) return named
+  return Array.from({ length: n }, (_, i) => ({ id: i, name: `#${i}` }))
+}
+
 function partialBytes(id: string): number {
   const p = join(ttsModelDir(id), 'model.onnx.part')
   return existsSync(p) ? statSync(p).size : 0
@@ -81,12 +126,14 @@ export function listTtsModels(): TtsModelInfo[] {
       id: m.id,
       name: m.name,
       repo: ttsRepo(m.id),
-      defaultRepo: m.defaultRepo,
+      defaultRepo: defaultSpec(m),
       sizeLabel: m.sizeLabel,
       license: m.license,
       note: m.note,
       installed: !!src,
       installedRepo: src?.repo ?? null,
+      format: src ? (src.format ?? 'vits') : null,
+      speakers: src ? ttsSpeakers(m.id) : [],
       bytes: src && existsSync(onnx) ? statSync(onnx).size : 0,
       partial: partialBytes(m.id)
     }
@@ -101,14 +148,52 @@ interface HfEntry {
 }
 
 const ONNX_PREFERRED = ['onnx/model.onnx', 'model.onnx', 'onnx/model_quantized.onnx', 'model_quantized.onnx']
+const CONFIG_FILES = ['vocab.json', 'config.json', 'tokenizer_config.json', 'piper.json']
 
-async function repoFiles(repo: string): Promise<HfEntry[]> {
-  const res = await netFetch(`https://huggingface.co/api/models/${repo}/tree/main?recursive=true`, {}, 'Tải model TTS (danh sách file)')
-  if (res.status === 401 || res.status === 403 || res.status === 404) {
-    throw new Error(`Không truy cập được repo ${repo} trên Hugging Face (HTTP ${res.status}) — repo không tồn tại hoặc đang để private`)
+const encPath = (p: string): string => p.split('/').map(encodeURIComponent).join('/')
+
+/** Danh sách file của repo: dir = một thư mục (không đệ quy, root = ''), null = cả repo (đệ quy). Theo trang (Link rel="next"). */
+async function repoFiles(repo: string, dir: string | null): Promise<HfEntry[]> {
+  let url: string | null =
+    dir === null
+      ? `https://huggingface.co/api/models/${repo}/tree/main?recursive=true`
+      : `https://huggingface.co/api/models/${repo}/tree/main${dir ? '/' + encPath(dir) : ''}`
+  const out: HfEntry[] = []
+  for (let page = 0; url && page < 20; page++) {
+    const res = await netFetch(url, {}, 'Tải model TTS (danh sách file)')
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(`Không truy cập được repo ${repo} trên Hugging Face (HTTP ${res.status}) — repo không tồn tại hoặc đang để private`)
+    }
+    if (res.status === 404) {
+      throw new Error(dir ? `Repo ${repo} không có thư mục ${dir} (HTTP 404)` : `Repo ${repo} không tồn tại trên Hugging Face (HTTP 404)`)
+    }
+    if (!res.ok) throw new Error(`Không lấy được danh sách file của ${repo} (HTTP ${res.status})`)
+    out.push(...((await res.json()) as HfEntry[]))
+    url = /<([^>]+)>;\s*rel="next"/.exec(res.headers.get('link') ?? '')?.[1] ?? null
   }
-  if (!res.ok) throw new Error(`Không lấy được danh sách file của ${repo} (HTTP ${res.status})`)
-  return (await res.json()) as HfEntry[]
+  return out
+}
+
+/** Chọn file .onnx + nhận định dạng từ danh sách file. */
+function pickModel(repo: string, files: HfEntry[], wanted: string | null): { onnxPath: string; format: TtsFormat } {
+  const paths = new Set(files.filter((f) => f.type === 'file').map((f) => f.path))
+  const hasVits = paths.has('vocab.json') && paths.has('config.json')
+  if (wanted) {
+    if (!paths.has(wanted)) throw new Error(`Repo ${repo} không có file ${wanted}`)
+    if (paths.has(wanted + '.json')) return { onnxPath: wanted, format: 'piper' }
+    if (hasVits) return { onnxPath: wanted, format: 'vits' }
+    throw new Error(`Không thấy file cấu hình của ${wanted} (Piper cần ${wanted}.json; VITS cần vocab.json + config.json)`)
+  }
+  const onnx = [...paths].filter((p) => p.endsWith('.onnx') && !p.includes('fp16'))
+  if (hasVits && onnx.length) return { onnxPath: ONNX_PREFERRED.find((p) => paths.has(p)) ?? onnx[0], format: 'vits' }
+  const piper = onnx.filter((p) => paths.has(p + '.json')).sort()
+  if (piper.length) return { onnxPath: piper[0], format: 'piper' }
+  if (!onnx.length) {
+    throw new Error(
+      `Repo ${repo} không có file .onnx (repo chỉ có .safetensors / .pth là bản PyTorch, app không chạy được) — cần bản ONNX: VITS (onnx/model.onnx + vocab.json + config.json) hoặc Piper (<tên>.onnx + <tên>.onnx.json)`
+    )
+  }
+  throw new Error(`Repo ${repo} thiếu file cấu hình (VITS cần vocab.json + config.json; Piper cần <tên>.onnx.json)`)
 }
 
 let active: { modelId: string; controller: AbortController; paused: boolean } | null = null
@@ -127,24 +212,22 @@ export function pauseTtsDownload(): void {
 export async function downloadTtsModel(modelId: string, onEvent: (e: TtsDownloadEvent) => void): Promise<boolean> {
   if (active) throw new Error('Đang tải một model TTS khác')
   ttsModelDef(modelId)
-  const repo = ttsRepo(modelId)
-  if (!repo) throw new Error('Model này chưa có repo Hugging Face — nhập repo (owner/ten-model) có bản ONNX rồi tải lại')
+  const spec = ttsRepo(modelId)
+  if (!spec) throw new Error('Model này chưa có nguồn Hugging Face — bấm Sửa repo, nhập owner/ten-model có bản ONNX rồi tải lại')
+  const { repo, file: wanted } = parseSpec(spec)
   const controller = new AbortController()
   active = { modelId, controller, paused: false }
   const dir = ttsModelDir(modelId)
   try {
-    const files = await repoFiles(repo)
-    const paths = new Set(files.filter((f) => f.type === 'file').map((f) => f.path))
-    const onnxPath =
-      ONNX_PREFERRED.find((p) => paths.has(p)) ?? [...paths].find((p) => p.endsWith('.onnx') && !p.includes('fp16'))
-    if (!onnxPath) {
-      throw new Error(
-        `Repo ${repo} không có file .onnx — app cần bản ONNX định dạng transformers.js (onnx/model.onnx + vocab.json + config.json)`
-      )
-    }
-    for (const need of ['vocab.json', 'config.json']) {
-      if (!paths.has(need)) throw new Error(`Repo ${repo} thiếu file ${need} (cần cho bộ tách chữ của model VITS)`)
-    }
+    // Có chỉ định file → chỉ liệt kê thư mục chứa nó (+ root nếu ở thư mục con, cho VITS) — repo nhiều giọng rất lớn
+    let files: HfEntry[]
+    if (wanted) {
+      const sub = wanted.includes('/') ? wanted.slice(0, wanted.lastIndexOf('/')) : ''
+      files = await repoFiles(repo, sub)
+      if (sub && !files.some((f) => f.path === wanted + '.json')) files = files.concat(await repoFiles(repo, ''))
+    } else files = await repoFiles(repo, null)
+    const { onnxPath, format } = pickModel(repo, files, wanted)
+    const paths = new Set(files.map((f) => f.path))
     const entry = files.find((f) => f.path === onnxPath)!
     const size = Number(entry.lfs?.size ?? entry.size)
     const sha = entry.lfs?.oid ? String(entry.lfs.oid).toLowerCase() : ''
@@ -152,15 +235,19 @@ export async function downloadTtsModel(modelId: string, onEvent: (e: TtsDownload
     await mkdir(dir, { recursive: true })
     // Nguồn khác bản đang cài → xoá bản cũ trước
     const old = installedSource(modelId)
-    if (old && (old.repo !== repo || old.file !== onnxPath)) await unlink(join(dir, 'model.onnx')).catch(() => {})
+    if (old && (old.repo !== spec || old.file !== onnxPath)) await unlink(join(dir, 'model.onnx')).catch(() => {})
     await unlink(join(dir, 'source.json')).catch(() => {})
+    for (const f of CONFIG_FILES) await unlink(join(dir, f)).catch(() => {})
 
     const base = `https://huggingface.co/${repo}/resolve/main/`
-    for (const f of ['vocab.json', 'config.json', 'tokenizer_config.json']) {
-      if (!paths.has(f)) continue
-      const r = await netFetch(base + f, { signal: controller.signal, redirect: 'follow' }, 'Tải model TTS (cấu hình)')
-      if (!r.ok) throw new Error(`Tải ${f} thất bại (HTTP ${r.status})`)
-      await writeFile(join(dir, f), Buffer.from(await r.arrayBuffer()))
+    const configs: [string, string][] =
+      format === 'piper'
+        ? [[onnxPath + '.json', 'piper.json']]
+        : (['vocab.json', 'config.json', 'tokenizer_config.json'].filter((f) => paths.has(f)).map((f) => [f, f]) as [string, string][])
+    for (const [remote, local] of configs) {
+      const r = await netFetch(base + encPath(remote), { signal: controller.signal, redirect: 'follow' }, 'Tải model TTS (cấu hình)')
+      if (!r.ok) throw new Error(`Tải ${remote} thất bại (HTTP ${r.status})`)
+      await writeFile(join(dir, local), Buffer.from(await r.arrayBuffer()))
     }
 
     const finalPath = join(dir, 'model.onnx')
@@ -177,7 +264,7 @@ export async function downloadTtsModel(modelId: string, onEvent: (e: TtsDownload
     if (start < size) {
       const headers: Record<string, string> = { 'User-Agent': 'MasterScoring' }
       if (start > 0) headers.Range = `bytes=${start}-`
-      const res = await netFetch(base + onnxPath + '?download=true', { headers, signal: controller.signal, redirect: 'follow' }, 'Tải model TTS')
+      const res = await netFetch(base + encPath(onnxPath) + '?download=true', { headers, signal: controller.signal, redirect: 'follow' }, 'Tải model TTS')
       if (res.status === 200 && start > 0) start = 0
       else if (!res.ok) throw new Error(`Tải model thất bại (HTTP ${res.status})`)
       if (!res.body) throw new Error('Không nhận được dữ liệu')
@@ -211,7 +298,7 @@ export async function downloadTtsModel(modelId: string, onEvent: (e: TtsDownload
       }
     }
     await rename(partPath, finalPath)
-    const src: TtsSource = { repo, file: onnxPath, sha256: sha, size }
+    const src: TtsSource = { repo: spec, file: onnxPath, sha256: sha, size, format }
     await writeFile(join(dir, 'source.json'), JSON.stringify(src, null, 2))
     onEvent({ modelId, phase: 'done', received: size, total: size, percent: 100 })
     return true

@@ -21,10 +21,11 @@ interface Prefs {
   voice: TtsVoice
   speed: number
   pitch: number
+  speakers: Record<string, number> // người đọc đã chọn theo model (-1 = tự chọn theo giọng)
 }
 
 function loadPrefs(): Prefs {
-  const def: Prefs = { modelId: 'mms-tts-vie', voice: 'female', speed: 1, pitch: 0 }
+  const def: Prefs = { modelId: 'mms-tts-vie', voice: 'female', speed: 1, pitch: 0, speakers: {} }
   try {
     return { ...def, ...(JSON.parse(localStorage.getItem(PREF_KEY) ?? '{}') as Partial<Prefs>) }
   } catch {
@@ -88,13 +89,26 @@ export function TextToSpeechPage(): JSX.Element {
 
   const model = models.find((m) => m.id === prefs.modelId)
   const set = (patch: Partial<Prefs>): void => setPrefs((p) => ({ ...p, ...patch }))
+  // Model đã chọn trước đây không còn trong danh sách (vd. đã bỏ khỏi app) → chọn model đầu
+  useEffect(() => {
+    if (models.length && !model) set({ modelId: models[0].id })
+  }, [models, model])
+  const speakerId = prefs.speakers?.[prefs.modelId] ?? -1
+  const multiSpeaker = !!model && model.speakers.length > 1
 
   const generate = async (): Promise<void> => {
     if (!text.trim() || busy) return
     setBusy(true)
     setProgress(null)
     try {
-      const req: TtsRequest = { text, modelId: prefs.modelId, voice: prefs.voice, speed: prefs.speed, pitch: prefs.pitch }
+      const req: TtsRequest = {
+        text,
+        modelId: prefs.modelId,
+        voice: prefs.voice,
+        speed: prefs.speed,
+        pitch: prefs.pitch,
+        speaker: multiSpeaker ? speakerId : undefined
+      }
       const r = await attempt(() => call<TtsResult>('tts:synthesize', req))
       if (!r) return
       const { wav, ...info } = r
@@ -134,7 +148,7 @@ export function TextToSpeechPage(): JSX.Element {
       <div className="page-header">
         <div>
           <div className="page-title">{t('Chuyển văn bản thành giọng nói')}</div>
-          <div className="meta mt-8">{t('Đọc văn bản tiếng Việt bằng model VITS chạy ngay trên máy — không gửi văn bản ra ngoài.')}</div>
+          <div className="meta mt-8">{t('Đọc văn bản tiếng Việt bằng model VITS / Piper chạy ngay trên máy — không gửi văn bản ra ngoài.')}</div>
         </div>
       </div>
 
@@ -180,6 +194,22 @@ export function TextToSpeechPage(): JSX.Element {
                 ))}
               </select>
             </Field>
+            {multiSpeaker && model && (
+              <Field label={t('Người đọc')}>
+                <select
+                  className="select"
+                  value={speakerId}
+                  onChange={(e) => set({ speakers: { ...prefs.speakers, [model.id]: Number(e.target.value) } })}
+                >
+                  <option value={-1}>{t('Tự chọn theo giọng Nam / Nữ')}</option>
+                  {model.speakers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {t(s.name)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
           </div>
 
           {model && !model.installed && (
@@ -213,6 +243,7 @@ export function TextToSpeechPage(): JSX.Element {
               <audio ref={audioRef} src={audioUrl} controls />
               <div className="row wrap" style={{ justifyContent: 'space-between' }}>
                 <span className="meta">
+                  {result.speaker ? `${t(result.speaker)} · ` : ''}
                   {result.durationSec.toFixed(1)} s · {result.sampleRate / 1000} kHz · {t('tạo trong {s} s').replace('{s}', (result.elapsedMs / 1000).toFixed(1))}
                   {result.baseF0 ? ` · ${t('cao độ gốc')} ${result.baseF0} Hz × ${result.pitchFactor}` : ''}
                 </span>
@@ -222,7 +253,7 @@ export function TextToSpeechPage(): JSX.Element {
               </div>
               {result.skipped.length > 0 && (
                 <div className="meta mt-8">
-                  {t('Ký tự model không đọc được (đã bỏ qua)')}: {result.skipped.join(' ')}
+                  {t('Ký tự / từ model không đọc được (đã bỏ qua)')}: {result.skipped.join(' ')}
                 </div>
               )}
             </div>
@@ -310,7 +341,7 @@ export function TextToSpeechPage(): JSX.Element {
             })}
           </div>
           <div className="meta mt-12">
-            {t('Model cần bản ONNX định dạng transformers.js trên Hugging Face (onnx/model.onnx + vocab.json + config.json). Giọng Nam / Nữ / Trẻ em được tạo bằng cách đổi cao độ giọng gốc của model.')}
+            {t('Sửa repo nhận owner/ten-model hoặc owner/ten-model/duong-dan/file.onnx. Hỗ trợ 2 định dạng ONNX: VITS transformers.js (onnx/model.onnx + vocab.json + config.json) và Piper tiếng Việt (<tên>.onnx + <tên>.onnx.json). Repo chỉ có .safetensors / .pth không chạy được. Giọng Nam / Nữ / Trẻ em: model nhiều giọng chọn người đọc nam / nữ, sau đó đổi cao độ tới mức của giọng.')}
           </div>
         </div>
       </div>
