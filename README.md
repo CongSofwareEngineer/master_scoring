@@ -17,7 +17,7 @@ build ra bộ cài `.exe` cho Windows 10/11 x64).
 
 | Mục đích | Lệnh |
 | --- | --- |
-| Cài package (chạy 1 lần) | `npm install` |
+| Cài package (chạy 1 lần, và **mỗi lần pull code có đổi `package.json`**) | `npm ci` (hoặc `npm install`) |
 | **Dev / debug** (hot reload, F12 mở DevTools) | `npm run dev` |
 | **Build production Windows → bộ cài `.exe`** | `npm run build:win` |
 | **Build production macOS → `.dmg` (Apple Silicon + Intel)** | `npm run build:mac` |
@@ -35,6 +35,8 @@ Kết quả nằm trong `release/<version>/`:
 | `MasterScoring-<version>-x64.dmg` | macOS chip Intel |
 
 Các lệnh build tự làm:
+0. Kiểm tra `node_modules` có đủ gói trong `dependencies` (`npm run check:deps`) — thiếu thì dừng, bảo chạy `npm ci`.
+   Sau khi đóng gói còn kiểm tra bản build có đủ `onnxruntime-node` (đọc giọng nói); thiếu thì dừng, không ra bộ cài lỗi.
 1. Sinh icon (`build/icon.ico`, `build/icon.png`).
 2. Tải llama-server (llama.cpp) để đóng gói kèm Local AI — Windows: bản CPU + GPU Vulkan và Visual C++ Redistributable;
    macOS: bản Metal cho từng kiến trúc (`npm run fetch:runtime` / `npm run fetch:runtime:mac`; đã có thì bỏ qua).

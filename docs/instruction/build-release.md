@@ -4,15 +4,26 @@
   bộ cài Windows.
 - **File:** `package.json` (scripts), `electron-builder.yml`, `electron.vite.config.ts`, `scripts/bump-version.mjs`,
   `scripts/builder.mjs`, `scripts/gen-cert.mjs`, `scripts/gen-icon.mjs`, `scripts/fetch-runtime.mjs`,
-  `scripts/run-electron-vite.mjs`, `build/trust-cert.bat`, `build/installer.nsh`,
+  `scripts/run-electron-vite.mjs`, `scripts/check-deps.mjs`, `scripts/after-pack.cjs`, `build/trust-cert.bat`, `build/installer.nsh`,
   `build/embedded-signer.cer` (sinh lúc build, không commit), `release/<version>/setup.bat` (sinh lúc build),
   `README.md`
 - **Changelog:** [../changelog/build-release.md](../changelog/build-release.md)
 
 ## Logic chính
 
-- **Lệnh:** `build:win`, `build:mac`, `build:mac:arm64`, `build:mac:x64`, `build:all` = `bump-version.mjs` rồi
-  `pack:*`. `pack:*` không tăng version (dùng để build lại).
+- **Lệnh:** `build:win`, `build:mac`, `build:mac:arm64`, `build:mac:x64`, `build:all` = `check-deps.mjs` →
+  `bump-version.mjs` → `pack:*`. `pack:*` (và `build:dir`) cũng chạy `check-deps.mjs` đầu tiên, không tăng version (dùng
+  để build lại). Chạy riêng: `npm run check:deps`.
+- **Kiểm tra node_modules trước khi build (`check-deps.mjs`):** mọi gói trong `dependencies` của `package.json` phải có
+  trong `node_modules` (gói ghim cứng `x.y.z` phải đúng phiên bản; dạng `^`/`~` chỉ cần có mặt). Thiếu → in danh sách,
+  bảo chạy `npm ci`, thoát mã 1 (chạy trước `bump-version` nên không tốn số version). Lý do: `electron-vite` để các gói
+  này ngoài bundle (`externalizeDepsPlugin`) và electron-builder chỉ chép những gì đang có trong `node_modules` — thiếu
+  gói thì build vẫn "thành công" nhưng app lỗi lúc chạy (vd. `Cannot find package 'onnxruntime-node'`).
+- **Kiểm tra bản đóng gói (`afterPack: scripts/after-pack.cjs`):** sau khi electron-builder dựng thư mục app, trước khi
+  tạo `.exe` / `.dmg`: `app.asar` (tính cả mục unpack, đọc bằng `@electron/asar`) phải có
+  `node_modules/onnxruntime-node/package.json` + `node_modules/onnxruntime-common/package.json`, và `app.asar.unpacked`
+  phải có `onnxruntime-node/bin/napi-v6/<platform>/<arch>/onnxruntime_binding.node`. Thiếu → ném lỗi, dừng build.
+  Ngoại lệ: macOS x64 chỉ cảnh báo (upstream không có binary darwin/x64).
 - **Tăng version (`bump-version.mjs`):** mặc định patch; chọn bằng tham số hoặc `BUMP=minor|major|none`. Cập nhật
   `package.json` + `package-lock.json`. Version hiển thị trên top bar qua `__APP_VERSION__`.
 - **pack:win:** `gen-icon` → `fetch-runtime win` (llama-server CPU + Vulkan, 7-Zip `7z.exe + 7z.dll` →
@@ -58,6 +69,11 @@
   `files` bỏ binary Linux (chung), bộ cài Windows bỏ `darwin/` + `win32/arm64/`, bộ cài macOS bỏ `win32/`. Bản 1.31.1 chỉ có
   binary macOS **arm64** → bản Mac Intel không chạy được TTS (các chức năng khác bình thường). `npmRebuild: false` vẫn đúng
   vì là N-API. npm 11 chặn postinstall của gói (chỉ dùng để tải CUDA trên Linux) — không ảnh hưởng.
+  electron-builder tự unpack **cả gói** `onnxruntime-node` (vì có file `.node`); `onnxruntime-common` vẫn nằm trong asar.
+- **Build trên máy chưa `npm ci` sau khi pull** từng ra bộ cài thiếu `onnxruntime-node` + `onnxruntime-common` (trang TTS
+  báo `Cannot find package 'onnxruntime-node' imported from …\resources\app.asar\…`). Nay `check-deps` + `after-pack`
+  chặn. Dự án có cả `package-lock.json` lẫn `yarn.lock`: cài bằng npm (`npm ci`) sẽ ghi lại `yarn.lock` — đừng commit
+  thay đổi đó nếu không chủ đích.
 
 - `build/cert/` nằm trong `.gitignore` — **phải sao lưu riêng**; mất thì bản build sau dùng chứng chỉ khác, người dùng
   phải tin cậy lại.

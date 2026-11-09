@@ -96,8 +96,16 @@
 
 ## Lưu ý / giới hạn
 
-- `onnxruntime-node` nạp lười (`import()` lần đầu đọc) — máy không nạp được (vd. **Mac Intel: bản 1.31.1 chỉ có binary macOS
-  arm64**) chỉ lỗi ở trang TTS, các chức năng khác không ảnh hưởng.
+- `onnxruntime-node` nạp lười (lần đầu đọc) bằng `createRequire(<app.getAppPath()>/package.json)('onnxruntime-node')`
+  (loader CJS, hỗ trợ asar đầy đủ, không phụ thuộc định dạng bundle `out/main`); lỗi thì thử `import()` như cũ. Máy không
+  nạp được chỉ lỗi ở trang TTS, các chức năng khác không ảnh hưởng. `ortLoadError` thêm hướng xử lý theo nguyên nhân:
+  - `Cannot find package/module 'onnxruntime-node|common'` → **bộ cài đóng gói thiếu gói** → cài lại bản mới nhất (build
+    nay bị chặn bởi `check-deps` + `after-pack`, xem `build-release.md`).
+  - Không tìm thấy `onnxruntime_binding.node` → không có binary cho nền tảng (vd. **Mac Intel: bản 1.31.1 chỉ có binary
+    macOS arm64**).
+  - Windows lỗi nạp DLL → thiếu **Visual C++ Redistributable 2015–2022 x64** (`onnxruntime.dll` cần `MSVCP140` /
+    `VCRUNTIME140`; Electron không kèm). Bộ cài NSIS đã tự cài `vc_redist` (cần bấm đồng ý UAC) — người dùng từ chối UAC
+    thì cài tay từ `https://aka.ms/vs/17/release/vc_redist.x64.exe`.
 - App **không kèm espeak-ng** (18 MB, GPL-3) — chỉ tra bảng sinh sẵn. Cần sinh lại bảng (đổi danh sách từ / bản espeak):
   `npm i --no-save espeak-ng@1.0.2` rồi `node scripts/gen-vi-ipa.mjs`. Truyền văn bản cho espeak WASM qua file ảo (`-f`),
   không qua argv (argv làm hỏng chữ có dấu).

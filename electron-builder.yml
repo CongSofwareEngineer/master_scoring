@@ -20,6 +20,8 @@ asarUnpack:
   # onnxruntime-node (TTS): file .node / .dll / .dylib phải nằm ngoài asar để nạp được
   - node_modules/onnxruntime-node/bin/**
 npmRebuild: false
+# Kiểm tra bản đóng gói có đủ onnxruntime-node (TTS) — thiếu thì dừng build, không ra bộ cài lỗi
+afterPack: scripts/after-pack.cjs
 
 # ───────────── Windows 10/11 x64: bộ cài NSIS (.exe) ─────────────
 win:

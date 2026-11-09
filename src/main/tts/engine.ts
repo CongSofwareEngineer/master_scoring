@@ -1,7 +1,9 @@
 // Tổng hợp giọng nói: văn bản → (chuẩn hoá, tách đoạn) → model ONNX (onnxruntime-node) → ghép đoạn + khoảng lặng
 // → đổi cao độ theo giọng Nam / Nữ / Trẻ em → WAV.
 // Hai định dạng model: VITS transformers.js (chữ cái → vocab.json) và Piper (chữ → phiên âm IPA → phoneme_id_map).
+import { app } from 'electron'
 import { readFileSync } from 'fs'
+import { createRequire } from 'module'
 import { join } from 'path'
 import { TTS_MAX_CHARS, TTS_VOICES } from '@shared/constants'
 import type { TtsRequest, TtsResult, TtsSpeaker, TtsVoice } from '@shared/types'
@@ -38,17 +40,51 @@ let loaded: Loaded | null = null
 let busy: Promise<unknown> = Promise.resolve()
 const cancelled = new Set<number>()
 
+// Nạp onnxruntime-node bằng require (CJS) tính từ thư mục app (app.asar khi đã đóng gói) — loader CJS của Electron hỗ
+// trợ asar đầy đủ và không phụ thuộc định dạng bundle của out/main. Không được thì thử import() (ESM) như cũ.
 async function ort(): Promise<Ort> {
   if (ortMod) return ortMod
+  let first: any = null
+  try {
+    const m: any = createRequire(join(app.getAppPath(), 'package.json'))('onnxruntime-node')
+    ortMod = (m.default ?? m) as Ort
+    return ortMod
+  } catch (e) {
+    first = e
+  }
   try {
     const m: any = await import('onnxruntime-node')
     ortMod = (m.default ?? m) as Ort
     return ortMod
-  } catch (e: any) {
-    throw new Error(
-      `Không nạp được bộ chạy ONNX (onnxruntime-node) trên máy này (${process.platform}/${process.arch}): ${e?.message ?? e}`
+  } catch {
+    throw new Error(ortLoadError(first))
+  }
+}
+
+// Thông báo lỗi có hướng xử lý theo nguyên nhân thường gặp.
+function ortLoadError(e: any): string {
+  const where = `${process.platform}/${process.arch}`
+  const msg = String(e?.message ?? e)
+  const base = `Không nạp được bộ chạy ONNX (onnxruntime-node) trên máy này (${where}): ${msg}`
+  // 1) Gói không có trong bộ cài (build từ node_modules thiếu onnxruntime-node).
+  if (/Cannot find (package|module) 'onnxruntime-(node|common)'/.test(msg)) {
+    return (
+      `${base}\n→ Bộ cài Master Scoring này bị đóng gói thiếu thành phần đọc giọng nói. ` +
+      'Hãy cài lại bản Master Scoring mới nhất (bản build đã kiểm tra đủ thành phần).'
     )
   }
+  // 2) Không có binary cho nền tảng này (vd. macOS Intel — onnxruntime-node 1.31.1 chỉ có darwin/arm64).
+  if (/onnxruntime_binding\.node/.test(msg) && /Cannot find module/.test(msg)) {
+    return `${base}\n→ onnxruntime-node chưa có bản cho ${where} — chức năng đọc giọng nói không chạy được trên máy này.`
+  }
+  // 3) Windows thiếu Microsoft Visual C++ Redistributable (onnxruntime.dll cần MSVCP140 / VCRUNTIME140).
+  if (process.platform === 'win32' && /specified module could not be found|dlopen|\.dll/i.test(msg)) {
+    return (
+      `${base}\n→ Máy thiếu "Microsoft Visual C++ Redistributable 2015–2022 (x64)". ` +
+      'Tải và cài từ https://aka.ms/vs/17/release/vc_redist.x64.exe rồi mở lại app.'
+    )
+  }
+  return base
 }
 
 function readJson(path: string): any {
