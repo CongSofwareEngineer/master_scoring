@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Baby, Download, Pause, Pencil, Save, Square, Trash2, User, UserRound, Volume2 } from 'lucide-react'
+import { Baby, Download, FileText, Pause, Pencil, Save, Square, Trash2, Type, User, UserRound, Volume2 } from 'lucide-react'
 import { TTS_MAX_CHARS } from '@shared/constants'
 import type { TtsDownloadEvent, TtsModelInfo, TtsRequest, TtsResult, TtsVoice } from '@shared/types'
 import { call, on } from '../lib/api'
@@ -7,6 +7,7 @@ import { cls, fmtBytes } from '../lib/format'
 import { useT } from '../lib/i18n'
 import { attempt, useStore } from '../lib/store'
 import { confirmDialog, Field, Progress } from '../components/ui'
+import { TtsBatchPanel } from './TtsBatch'
 
 const VOICES: { id: TtsVoice; label: string; icon: typeof User }[] = [
   { id: 'male', label: 'Nam', icon: User },
@@ -22,10 +23,11 @@ interface Prefs {
   speed: number
   pitch: number
   speakers: Record<string, number> // người đọc đã chọn theo model (-1 = tự chọn theo giọng)
+  mode: 'text' | 'file' // nhập văn bản (1 file) / từ file (mỗi dòng 1 file)
 }
 
 function loadPrefs(): Prefs {
-  const def: Prefs = { modelId: 'mms-tts-vie', voice: 'female', speed: 1, pitch: 0, speakers: {} }
+  const def: Prefs = { modelId: 'mms-tts-vie', voice: 'female', speed: 1, pitch: 0, speakers: {}, mode: 'text' }
   try {
     return { ...def, ...(JSON.parse(localStorage.getItem(PREF_KEY) ?? '{}') as Partial<Prefs>) }
   } catch {
@@ -96,19 +98,20 @@ export function TextToSpeechPage(): JSX.Element {
   const speakerId = prefs.speakers?.[prefs.modelId] ?? -1
   const multiSpeaker = !!model && model.speakers.length > 1
 
+  const baseReq: Omit<TtsRequest, 'text'> = {
+    modelId: prefs.modelId,
+    voice: prefs.voice,
+    speed: prefs.speed,
+    pitch: prefs.pitch,
+    speaker: multiSpeaker ? speakerId : undefined
+  }
+
   const generate = async (): Promise<void> => {
     if (!text.trim() || busy) return
     setBusy(true)
     setProgress(null)
     try {
-      const req: TtsRequest = {
-        text,
-        modelId: prefs.modelId,
-        voice: prefs.voice,
-        speed: prefs.speed,
-        pitch: prefs.pitch,
-        speaker: multiSpeaker ? speakerId : undefined
-      }
+      const req: TtsRequest = { ...baseReq, text }
       const r = await attempt(() => call<TtsResult>('tts:synthesize', req))
       if (!r) return
       const { wav, ...info } = r
@@ -148,25 +151,38 @@ export function TextToSpeechPage(): JSX.Element {
       <div className="page-header">
         <div>
           <div className="page-title">{t('Chuyển văn bản thành giọng nói')}</div>
-          <div className="meta mt-8">{t('Đọc văn bản tiếng Việt bằng model VITS / Piper chạy ngay trên máy — không gửi văn bản ra ngoài.')}</div>
+          <div className="meta mt-8">
+            {t('Đọc văn bản tiếng Việt bằng model VITS / Piper chạy ngay trên máy — không gửi văn bản ra ngoài.')}
+          </div>
         </div>
       </div>
 
       <div className="tts-grid">
         <div className="card">
-          <Field label={t('Văn bản')} hint={`${chars.toLocaleString()} / ${TTS_MAX_CHARS.toLocaleString()} ${t('ký tự')}`}>
-            <textarea
-              className="textarea"
-              rows={10}
-              value={text}
-              maxLength={TTS_MAX_CHARS}
-              placeholder={t('Nhập hoặc dán văn bản tiếng Việt cần đọc…')}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') void generate()
-              }}
-            />
-          </Field>
+          <div className="seg-toggle tts-voice mb-12">
+            <button className={cls(prefs.mode !== 'file' && 'active')} onClick={() => set({ mode: 'text' })}>
+              <Type size={14} /> {t('Nhập văn bản')}
+            </button>
+            <button className={cls(prefs.mode === 'file' && 'active')} onClick={() => set({ mode: 'file' })}>
+              <FileText size={14} /> {t('Từ file (mỗi dòng 1 file)')}
+            </button>
+          </div>
+
+          {prefs.mode !== 'file' && (
+            <Field label={t('Văn bản')} hint={`${chars.toLocaleString()} / ${TTS_MAX_CHARS.toLocaleString()} ${t('ký tự')}`}>
+              <textarea
+                className="textarea"
+                rows={10}
+                value={text}
+                maxLength={TTS_MAX_CHARS}
+                placeholder={t('Nhập hoặc dán văn bản tiếng Việt cần đọc…')}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') void generate()
+                }}
+              />
+            </Field>
+          )}
 
           <div className="tts-options mt-12">
             <Field label={t('Giọng')}>
@@ -179,7 +195,14 @@ export function TextToSpeechPage(): JSX.Element {
               </div>
             </Field>
             <Field label={`${t('Tốc độ')} · ${prefs.speed.toFixed(2)}×`}>
-              <input type="range" min={0.5} max={2} step={0.05} value={prefs.speed} onChange={(e) => set({ speed: Number(e.target.value) })} />
+              <input
+                type="range"
+                min={0.5}
+                max={2}
+                step={0.05}
+                value={prefs.speed}
+                onChange={(e) => set({ speed: Number(e.target.value) })}
+              />
             </Field>
             <Field label={`${t('Tinh chỉnh cao độ')} · ${prefs.pitch > 0 ? '+' : ''}${prefs.pitch}`}>
               <input type="range" min={-6} max={6} step={1} value={prefs.pitch} onChange={(e) => set({ pitch: Number(e.target.value) })} />
@@ -216,47 +239,63 @@ export function TextToSpeechPage(): JSX.Element {
             <div className="callout warning mt-12">{t('Model này chưa được tải — tải ở danh sách model bên phải trước khi đọc.')}</div>
           )}
 
-          <div className="row mt-12 wrap">
-            <button className="btn btn-primary" disabled={!canGenerate} onClick={() => void generate()}>
-              <Volume2 size={14} /> {busy ? t('Đang tạo giọng nói…') : t('Đọc văn bản')}
-            </button>
-            {busy && (
-              <button className="btn" onClick={() => void call('tts:cancel')}>
-                <Square size={14} /> {t('Dừng')}
-              </button>
-            )}
-            <span className="meta">Ctrl+Enter</span>
-          </div>
-          {busy && (
-            <div className="mt-12">
-              <Progress value={pct} indeterminate={!progress} />
-              {progress && (
-                <div className="meta mt-8">
-                  {t('Đang đọc đoạn {done}/{total}').replace('{done}', String(Math.min(progress.done + 1, progress.total))).replace('{total}', String(progress.total))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {audioUrl && result && (
-            <div className="tts-player mt-16">
-              <audio ref={audioRef} src={audioUrl} controls />
-              <div className="row wrap" style={{ justifyContent: 'space-between' }}>
-                <span className="meta">
-                  {result.speaker ? `${t(result.speaker)} · ` : ''}
-                  {result.durationSec.toFixed(1)} s · {result.sampleRate / 1000} kHz · {t('tạo trong {s} s').replace('{s}', (result.elapsedMs / 1000).toFixed(1))}
-                  {result.baseF0 ? ` · ${t('cao độ gốc')} ${result.baseF0} Hz × ${result.pitchFactor}` : ''}
-                </span>
-                <button className="btn btn-sm" onClick={() => void attempt(() => call<string | null>('tts:save')).then((p) => p && useStore.getState().toast(t('Đã lưu') + ': ' + p, 'success'))}>
-                  <Save size={14} /> {t('Lưu file .wav')}
+          {prefs.mode === 'file' ? (
+            <TtsBatchPanel base={baseReq} ready={!!model?.installed} />
+          ) : (
+            <>
+              <div className="row mt-12 wrap">
+                <button className="btn btn-primary" disabled={!canGenerate} onClick={() => void generate()}>
+                  <Volume2 size={14} /> {busy ? t('Đang tạo giọng nói…') : t('Đọc văn bản')}
                 </button>
+                {busy && (
+                  <button className="btn" onClick={() => void call('tts:cancel')}>
+                    <Square size={14} /> {t('Dừng')}
+                  </button>
+                )}
+                <span className="meta">Ctrl+Enter</span>
               </div>
-              {result.skipped.length > 0 && (
-                <div className="meta mt-8">
-                  {t('Ký tự / từ model không đọc được (đã bỏ qua)')}: {result.skipped.join(' ')}
+              {busy && (
+                <div className="mt-12">
+                  <Progress value={pct} indeterminate={!progress} />
+                  {progress && (
+                    <div className="meta mt-8">
+                      {t('Đang đọc đoạn {done}/{total}')
+                        .replace('{done}', String(Math.min(progress.done + 1, progress.total)))
+                        .replace('{total}', String(progress.total))}
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
+
+              {audioUrl && result && (
+                <div className="tts-player mt-16">
+                  <audio ref={audioRef} src={audioUrl} controls />
+                  <div className="row wrap" style={{ justifyContent: 'space-between' }}>
+                    <span className="meta">
+                      {result.speaker ? `${t(result.speaker)} · ` : ''}
+                      {result.durationSec.toFixed(1)} s · {result.sampleRate / 1000} kHz ·{' '}
+                      {t('tạo trong {s} s').replace('{s}', (result.elapsedMs / 1000).toFixed(1))}
+                      {result.baseF0 ? ` · ${t('cao độ gốc')} ${result.baseF0} Hz × ${result.pitchFactor}` : ''}
+                    </span>
+                    <button
+                      className="btn btn-sm"
+                      onClick={() =>
+                        void attempt(() => call<string | null>('tts:save')).then(
+                          (p) => p && useStore.getState().toast(t('Đã lưu') + ': ' + p, 'success')
+                        )
+                      }
+                    >
+                      <Save size={14} /> {t('Lưu file .wav')}
+                    </button>
+                  </div>
+                  {result.skipped.length > 0 && (
+                    <div className="meta mt-8">
+                      {t('Ký tự / từ model không đọc được (đã bỏ qua)')}: {result.skipped.join(' ')}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -279,7 +318,9 @@ export function TextToSpeechPage(): JSX.Element {
                     {m.license ? ` · ${m.license}` : ''}
                   </div>
                   {m.installed && m.installedRepo && m.installedRepo !== m.repo && (
-                    <div className="meta mt-8">{t('Bản đang cài tải từ')} {m.installedRepo}</div>
+                    <div className="meta mt-8">
+                      {t('Bản đang cài tải từ')} {m.installedRepo}
+                    </div>
                   )}
 
                   {editRepo?.id === m.id && (
@@ -341,7 +382,9 @@ export function TextToSpeechPage(): JSX.Element {
             })}
           </div>
           <div className="meta mt-12">
-            {t('Sửa repo nhận owner/ten-model hoặc owner/ten-model/duong-dan/file.onnx. Hỗ trợ 2 định dạng ONNX: VITS transformers.js (onnx/model.onnx + vocab.json + config.json) và Piper tiếng Việt (<tên>.onnx + <tên>.onnx.json). Repo chỉ có .safetensors / .pth không chạy được. Giọng Nam / Nữ / Trẻ em: model nhiều giọng chọn người đọc nam / nữ, sau đó đổi cao độ tới mức của giọng.')}
+            {t(
+              'Sửa repo nhận owner/ten-model hoặc owner/ten-model/duong-dan/file.onnx. Hỗ trợ 2 định dạng ONNX: VITS transformers.js (onnx/model.onnx + vocab.json + config.json) và Piper tiếng Việt (<tên>.onnx + <tên>.onnx.json). Repo chỉ có .safetensors / .pth không chạy được. Giọng Nam / Nữ / Trẻ em: model nhiều giọng chọn người đọc nam / nữ, sau đó đổi cao độ tới mức của giọng.'
+            )}
           </div>
         </div>
       </div>

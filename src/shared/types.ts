@@ -638,3 +638,42 @@ export interface TtsResult {
   skipped: string[] // ký tự / từ model không đọc được (đã bỏ)
   speaker: string | null // người đọc đã dùng (model nhiều giọng)
 }
+
+// ───── TTS từ file: mỗi dòng có chữ = 1 file voice<N>.wav ─────
+/** Lý do một dòng bị bỏ khi tách: dòng trống / chỉ có ký hiệu (không có chữ, số) / chỉ là cú pháp định dạng (Markdown…). */
+export type TtsLineSkip = 'empty' | 'symbols' | 'markup'
+
+export interface TtsFileLine {
+  line: number // số dòng (1-based) trong văn bản đã lấy ra từ file
+  text: string // nội dung sẽ đọc (đã bỏ ký hiệu định dạng)
+  raw?: string // dòng gốc nếu khác `text` (để người dùng đối chiếu)
+  skip?: TtsLineSkip
+}
+
+export interface TtsFileParse {
+  name: string // tên file đã mở
+  kind: string // loại file nhận ra (vd. "Văn bản", "Markdown", "Word")
+  encoding?: string // bảng mã đã dùng (file văn bản thuần)
+  lines: TtsFileLine[]
+  truncated: boolean // file quá nhiều dòng → chỉ lấy TTS_BATCH_MAX_LINES dòng đầu
+}
+
+export interface TtsBatchItem {
+  n: number // số thứ tự file → voice<n>.wav
+  text: string
+}
+
+export interface TtsBatchEvent {
+  userId: number
+  n: number
+  status: 'running' | 'done' | 'error'
+  message?: string
+  durationSec?: number
+}
+
+export interface TtsBatchSummary {
+  folder: string
+  done: number
+  failed: number
+  cancelled: boolean
+}

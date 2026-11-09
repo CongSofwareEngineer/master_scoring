@@ -460,3 +460,11 @@ export const TTS_VOICES = {
 } as const
 
 export const TTS_MAX_CHARS = 5000
+// TTS từ file: tối đa số dòng lấy ra từ 1 file, dung lượng file tối đa
+export const TTS_BATCH_MAX_LINES = 5000
+export const TTS_FILE_MAX_BYTES = 50 * 1024 * 1024
+// Đuôi file mở được trong hộp thoại "Mở file" (đuôi khác vẫn thử đọc như văn bản thuần)
+export const TTS_FILE_EXTS = [
+  'txt', 'text', 'log', 'md', 'markdown', 'html', 'htm', 'xhtml', 'xml', 'srt', 'vtt', 'csv', 'tsv', 'json',
+  'docx', 'doc', 'rtf', 'odt', 'xlsx', 'xls', 'ods', 'pptx', 'ppt', 'odp', 'epub'
+]

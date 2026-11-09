@@ -2061,3 +2061,81 @@ pre.output {
 .tts-player audio {
   width: 100%;
 }
+/* TTS từ file: màn xem trước tách dòng */
+.tts-file-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.tts-lines {
+  max-height: 460px;
+  overflow: auto;
+}
+.tts-lines thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-2);
+}
+.tts-lines td {
+  vertical-align: top;
+}
+.tts-line-skip td {
+  opacity: 0.55;
+}
+.tts-line-off .tts-line-text {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.tts-line-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-radius: var(--radius);
+  padding: 2px 4px;
+  margin: -2px -4px;
+}
+.tts-line-text.editable {
+  cursor: text;
+}
+.tts-line-text.editable:hover {
+  background: var(--surface-2);
+  outline: 1px dashed var(--border);
+}
+.tts-line-raw {
+  margin-top: 4px;
+}
+.tts-line-warn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--warning);
+}
+.tts-line-err {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--danger, #ef4444);
+}
+.tts-ok {
+  color: var(--success);
+  display: inline-flex;
+}
+.tts-err {
+  color: var(--danger, #ef4444);
+  display: inline-flex;
+}
+.tts-spin {
+  animation: spin 0.8s linear infinite;
+}
+.tts-export {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}

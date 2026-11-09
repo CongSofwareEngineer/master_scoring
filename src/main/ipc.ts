@@ -1,12 +1,13 @@
 // Đăng ký toàn bộ IPC handler. Mọi handler trả về { ok, data } | { ok: false, error } để UI hiển thị lỗi rõ ràng.
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron'
 import { existsSync } from 'fs'
-import { writeFile } from 'fs/promises'
+import { readFile as readFsFile, stat, writeFile } from 'fs/promises'
+import { basename } from 'path'
 import { evaluatePenalty, normalizePolicy } from '@shared/aiPolicy'
-import { round2 } from '@shared/constants'
+import { round2, TTS_FILE_EXTS, TTS_FILE_MAX_BYTES } from '@shared/constants'
 import { translate } from '@shared/i18n'
 import { REPORT_EXTS, SUPPORTED_EXTS } from '@shared/submissionName'
-import type { Assignment, Criterion, DataBackendChoice, Lang, TechProfile, TtsRequest } from '@shared/types'
+import type { Assignment, Criterion, DataBackendChoice, Lang, TechProfile, TtsBatchItem, TtsRequest } from '@shared/types'
 import { cloudBackend, cloudHasKey, getCloudConfig, localBackend, saveCloudConfig, testConnection } from './ai/client'
 import { aiStatus, ensureLocalStarted, installAndUse, pauseModelDownload, restartLocal, switchModel } from './ai/manager'
 import { getLocalState, stopLocal } from './ai/llama'
@@ -50,7 +51,9 @@ import {
 import { defaultReportName, exportCsv, exportExcel, exportPdf, reportColumns } from './reports/reports'
 import { invalidateReview, listFiles, readFile, readRawFile, searchProject } from './review'
 import { getSettings, updateSettings } from './settings'
+import { cancelTtsBatch, checkTtsLines, readTtsBatchFile, runTtsBatch, setTtsBatchFolder, ttsBatchFolder } from './tts/batch'
 import { cancelTts, synthesize, unloadTts } from './tts/engine'
+import { parseTtsFile } from './tts/fileText'
 import { currentTtsDownload, deleteTtsModel, downloadTtsModel, listTtsModels, pauseTtsDownload, setTtsRepo } from './tts/models'
 
 type Handler = (...args: any[]) => any
@@ -523,7 +526,11 @@ export function registerIpc(): void {
     lastTts.set(u.id, r.wav)
     return r
   })
-  handle('tts:cancel', () => cancelTts(requireUser().id))
+  handle('tts:cancel', () => {
+    const id = requireUser().id
+    cancelTtsBatch(id)
+    cancelTts(id)
+  })
   handle('tts:save', async () => {
     const u = requireUser()
     const wav = lastTts.get(u.id)
@@ -539,6 +546,51 @@ export function registerIpc(): void {
     await writeFile(r.filePath, wav)
     return r.filePath
   })
+
+  // ───── TTS từ file: mỗi dòng = 1 file voice<N>.wav ─────
+  handle('tts:openFile', async () => {
+    const u = requireUser()
+    const lang = getSettings(u.id).lang
+    const r = await dialog.showOpenDialog(win()!, {
+      title: translate(lang, 'Mở file văn bản'),
+      properties: ['openFile'],
+      filters: [
+        { name: translate(lang, 'File văn bản'), extensions: TTS_FILE_EXTS },
+        { name: translate(lang, 'Tất cả file'), extensions: ['*'] }
+      ]
+    })
+    if (r.canceled || !r.filePaths[0]) return null
+    const p = r.filePaths[0]
+    if ((await stat(p)).size > TTS_FILE_MAX_BYTES) throw new Error(`File quá lớn (tối đa ${TTS_FILE_MAX_BYTES / 1024 / 1024} MB)`)
+    return parseTtsFile(basename(p), await readFsFile(p))
+  })
+  handle('tts:checkLines', (modelId: string, lines: string[]) => {
+    requireUser()
+    return checkTtsLines(modelId, lines)
+  })
+  handle('tts:batchFolder', () => ttsBatchFolder(requireUser().id))
+  handle('tts:pickFolder', async () => {
+    const u = requireUser()
+    const r = await dialog.showOpenDialog(win()!, {
+      title: translate(getSettings(u.id).lang, 'Chọn thư mục lưu file âm thanh'),
+      defaultPath: ttsBatchFolder(u.id) ?? undefined,
+      properties: ['openDirectory', 'createDirectory', 'promptToCreate']
+    })
+    if (r.canceled || !r.filePaths[0]) return ttsBatchFolder(u.id)
+    setTtsBatchFolder(u.id, r.filePaths[0])
+    return r.filePaths[0]
+  })
+  handle('tts:openFolder', async () => {
+    const folder = ttsBatchFolder(requireUser().id)
+    if (!folder || !existsSync(folder)) throw new Error('Thư mục lưu không còn tồn tại')
+    const err = await shell.openPath(folder)
+    if (err) throw new Error(err)
+  })
+  handle('tts:batch', (base: Omit<TtsRequest, 'text'>, items: TtsBatchItem[]) => {
+    const u = requireUser()
+    return runTtsBatch(u.id, base, items, (e) => emit('tts:batch', e))
+  })
+  handle('tts:batchFile', (n: number) => readTtsBatchFile(requireUser().id, n))
 
   handle('system:netlog', () => listNetLog())
   handle('system:clearNetlog', () => clearNetLog())

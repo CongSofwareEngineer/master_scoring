@@ -7,7 +7,7 @@ tới 200K cho Cloud AI (Local AI tối đa 32K).
 Trong Code Review, bài báo cáo **.docx / .xlsx** xem được kiểu Office (nút **Văn bản / Xem trước**): Word giữ bố cục gần như bản gốc, Excel hiện đúng bảng / sheet / định dạng.
 Công cụ riêng **Phân tích dữ liệu** (sidebar): mở file Excel / CSV (.xlsx .xls .csv .tsv) rồi chat với **trợ lý kế toán AI** — hỏi tổng tiền, % trung bình, top, theo tháng…; mọi con số được tính bằng SQL trên toàn bộ dữ liệu và xem lại được truy vấn (xem [docs/instruction/data-chat.md](docs/instruction/data-chat.md)).
 
-Công cụ riêng **Chuyển văn bản thành giọng nói** (sidebar): đọc văn bản tiếng Việt offline bằng model VITS / Piper ONNX (facebook/mms-tts-vie ~109 MB, Piper vi_VN vais1000 ~63 MB, Piper 5 giọng ~77 MB — tải lần đầu), chọn giọng Nam / Nữ / Trẻ em hoặc người đọc, lưu file `.wav` (xem [docs/instruction/text-to-speech.md](docs/instruction/text-to-speech.md)).
+Công cụ riêng **Chuyển văn bản thành giọng nói** (sidebar): đọc văn bản tiếng Việt offline bằng model VITS / Piper ONNX (facebook/mms-tts-vie ~109 MB, Piper vi_VN vais1000 ~63 MB, Piper 5 giọng ~77 MB — tải lần đầu), chọn giọng Nam / Nữ / Trẻ em hoặc người đọc, lưu file `.wav`; chế độ **Từ file** đọc 1 file văn bản (txt, md, Word, Excel, PowerPoint, srt, csv…) thành nhiều file — mỗi dòng 1 file `voice1.wav`, `voice2.wav`… có xem trước cách tách dòng (xem [docs/instruction/text-to-speech.md](docs/instruction/text-to-speech.md)).
 Thiết kế chi tiết: [Master_Scoring_Design.md](Master_Scoring_Design.md).
 
 Công nghệ: **Electron + React + TypeScript** (phương án thay thế trong mục 23 của design — dev được trên macOS/Windows,
@@ -98,7 +98,7 @@ src/main/        Electron main process
   reports/       Excel (exceljs), CSV, PDF (printToPDF)
   agents/        khung agent AI tool calling (base / llm / runAgent, registry agents/ + tools/) — dùng cho Trợ lý dữ liệu
   datachat/      Trợ lý dữ liệu: đọc Excel / CSV → SQLite trong RAM, AI kế toán hỏi đáp bằng SQL chỉ-đọc
-  tts/           Chuyển văn bản thành giọng nói: model VITS / Piper ONNX (onnxruntime-node), chuẩn hoá chữ tiếng Việt, bảng phiên âm vi-ipa.json, đổi cao độ, WAV
+  tts/           Chuyển văn bản thành giọng nói: model VITS / Piper ONNX (onnxruntime-node), chuẩn hoá chữ tiếng Việt, bảng phiên âm vi-ipa.json, đổi cao độ, WAV, đọc file → tách dòng + xuất hàng loạt
 src/preload/     cầu nối IPC an toàn (contextIsolation + sandbox)
 src/renderer/    React UI (dark theme, CodeMirror 6 read-only, biểu đồ SVG)
 ```
